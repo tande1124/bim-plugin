@@ -1,0 +1,38 @@
+{
+    "name": "vam-plugin-bim",
+    "version": "1.0.0",
+    "main": "./src/main.js",
+    "license": "UNLICENSED",
+    "description": "基于Vam2框架的项目",
+
+    "scripts": {
+        "dev": "vam2 dev",
+        "build": "vam2 build",
+        "new": "vam2 new",
+        "preview": "vam2 preview",
+        "vam2": "vam2",
+        "remove-config-suffix": "vam2 remove-config-suffix",
+        "add-config-suffix": "vam2 add-config-suffix",
+        "postinstall": "vam2 patch-package",
+        "report": "vam2 report",
+        "build-image": "vam2 build-image",
+        "run-image": "vam2 run-image",
+        "push-image":  "vam2 push-image",
+        "pull-image":  "vam2 pull-image",
+        "remove-image":  "vam2 remove-image",
+        "deploy-init":  "deploy-cli-service init",
+        "deploy:dev": "deploy-cli-service deploy --mode dev",
+        "deploy:test": "deploy-cli-service deploy --mode test",
+        "deploy:prod": "deploy-cli-service deploy --mode prod"
+    },
+    "dependencies": {
+        "@ins/vam2-core": "^1.3.204",
+        "@ins/vam2-plugin-tanggula": "^1.3.248"
+    },
+    "docker": {
+        "namespace": "wuhanins-vam-plugin-bim"
+    },
+    "vam2-plugins": [
+        "tanggula"
+    ]
+}
