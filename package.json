@@ -3,8 +3,7 @@
     "version": "1.0.0",
     "main": "./src/main.js",
     "license": "UNLICENSED",
-    "description":  "基于uniserver3.0的bim插件",
-
+    "description": "基于uniserver3.0的bim插件",
     "scripts": {
         "dev": "vam2 dev",
         "build": "vam2 build",
@@ -17,17 +16,20 @@
         "report": "vam2 report",
         "build-image": "vam2 build-image",
         "run-image": "vam2 run-image",
-        "push-image":  "vam2 push-image",
-        "pull-image":  "vam2 pull-image",
-        "remove-image":  "vam2 remove-image",
-        "deploy-init":  "deploy-cli-service init",
+        "push-image": "vam2 push-image",
+        "pull-image": "vam2 pull-image",
+        "remove-image": "vam2 remove-image",
+        "deploy-init": "deploy-cli-service init",
         "deploy:dev": "deploy-cli-service deploy --mode dev",
         "deploy:test": "deploy-cli-service deploy --mode test",
         "deploy:prod": "deploy-cli-service deploy --mode prod"
     },
-   "devDependencies": {
+    "devDependencies": {
         "@ins/vam2-core": "^1.3.182",
-        "@ins/vam2-plugin-tanggula": "^1.3.224"
+        "@ins/vam2-plugin-tanggula": "^1.3.224",
+        "proj4": "^2.21.0",
+        "3d-tiles-renderer": "^0.4.6",
+        "three": "^0.185.1"
     },
     "docker": {
         "namespace": "wuhanins-vam-plugin-bim"
