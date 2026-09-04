@@ -1,6 +1,6 @@
 // 应用配置
 window.AppConfig = {
     apiBaseURL : {
-        System: 'http://172.18.35.90:28880',
+       System: "System", // 系统平台地址
     },
 }

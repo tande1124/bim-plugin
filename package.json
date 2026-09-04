@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "main": "./src/main.js",
     "license": "UNLICENSED",
-    "description": "基于Vam2框架的项目",
+    "description":  "基于uniserver3.0的bim插件",
 
     "scripts": {
         "dev": "vam2 dev",
@@ -25,9 +25,9 @@
         "deploy:test": "deploy-cli-service deploy --mode test",
         "deploy:prod": "deploy-cli-service deploy --mode prod"
     },
-    "dependencies": {
-        "@ins/vam2-core": "^1.3.204",
-        "@ins/vam2-plugin-tanggula": "^1.3.248"
+   "devDependencies": {
+        "@ins/vam2-core": "^1.3.182",
+        "@ins/vam2-plugin-tanggula": "^1.3.224"
     },
     "docker": {
         "namespace": "wuhanins-vam-plugin-bim"
