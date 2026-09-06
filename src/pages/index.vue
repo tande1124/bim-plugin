@@ -1,5 +1,5 @@
 <template>
-    <div>Hello World!!!</div>
+    <InsBimViewer></InsBimViewer>
 </template>
 
 <script>

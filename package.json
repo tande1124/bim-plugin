@@ -36,7 +36,7 @@
     },
     "devDependencies": {
         "@ins/vam2-core": "^1.3.182",
-        "@ins/vam2-plugin-tanggula": "^1.3.224",
+        "@ins/vam2-plugin-tanggula": "^1.3.224"
     },
     "docker": {
         "namespace": "wuhanins-vam-plugin-bim"

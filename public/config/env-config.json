@@ -1,0 +1,30 @@
+{
+  "envMapEnabled": true,
+  "bloom": {
+    "enabled": false,
+    "strength": 0.1,
+    "radius": 0,
+    "threshold": 0
+  },
+  "dirLight": {
+    "intensity": 1,
+    "yaw": 45,
+    "pitch": 50,
+    "color": "#ffffff",
+    "showPosHelper": false,
+    "showDirHelper": false,
+    "shadow": {
+      "enabled": true,
+      "resolution": 4096,
+      "range": 62,
+      "offsetX": 0,
+      "offsetY": 0,
+      "bias": -0.001
+    }
+  },
+  "envLight": {
+    "intensity": 1,
+    "bgIntensity": 1.5,
+    "exposure": 1
+  }
+}
