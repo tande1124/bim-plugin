@@ -6,7 +6,6 @@
 
 <script>
 import { defineComponent, markRaw } from 'vue'
-import * as THREE from 'three'
 import { TilesViewerController } from '../../utils/TilesViewerController'
 import { MaterialConfigurator } from '../../utils/common/material'
 
@@ -14,9 +13,22 @@ export default defineComponent({
   name: 'ThreeTilesViewer',
   props: {
     /** 3D Tiles 数据源 URL 列表 */
-    tilesetUrls: { type: Array, default: () => [] },
+    tilesetUrls: {
+      type: Array,
+      default: () => [],
+      validator: (v) => v.every((u) => typeof u === 'string'),
+    },
     /** GLTF 模型 URL 列表 */
-    gltfUrls: { type: Array, default: () => [] },
+    gltfUrls: {
+      type: Array,
+      default: () => [],
+      validator: (v) => v.every((u) => typeof u === 'string'),
+    },
+    /** 材质配置文件路径 */
+    materialConfigUrl: {
+      type: String,
+      default: './config/material-config.json',
+    },
   },
   emits: ['ready', 'gltf-pick', 'model-loaded', 'error'],
   data() {
@@ -87,37 +99,49 @@ export default defineComponent({
     async loadGltfModels() {
       if (!this.controller) return
       const loader = this.controller.getGltfModelLoader()
-      const geoConfig = window.BizConfig.gltfGeoConfig
+      const renderer = this.controller.renderer
+      const geoConfig = window.BizConfig?.gltfGeoConfig
       if (!geoConfig) {
-        this.$message.warning('[GLTF] 未找到地理配准配置 ,跳过 geo 定位。')
+        console.warn('[GLTF] 未找到地理配准配置，跳过 geo 定位。')
       }
 
-      for (const url of this.gltfUrls) {
-        const model = await loader.loadGltf(url, { geo: geoConfig })
+      // 材质配置器复用（避免循环内重复构建 ID 映射）
+      const matCfg = new MaterialConfigurator(renderer)
 
-        // 材质配置：加载 material-config.json 并按 meshName 覆盖材质
-        const matCfg = new MaterialConfigurator()
-        const { hdrMeta, appliedCount } = await matCfg.applyFromUrl(
-          './config/material-config.json',
-          model,
-          'test',
-        )
-        console.log(`[材质配置] ${url} 已应用 ${appliedCount} 个网格材质`, hdrMeta ? `| HDR: envInt=${hdrMeta.envInt}, bgInt=${hdrMeta.bgInt}, exposure=${hdrMeta.exposure}` : '')
-        this.$emit('model-loaded', { url, model })
+      for (const url of this.gltfUrls) {
+        try {
+          const model = await loader.loadGltf(url, { geo: geoConfig })
+
+          const { hdrMeta, appliedCount } = await matCfg.applyFromUrl(
+            this.materialConfigUrl,
+            model,
+            'test',
+          )
+          console.log(`[材质配置] ${url} 已应用 ${appliedCount} 个网格材质`, hdrMeta ? `| HDR: envInt=${hdrMeta.envInt}, bgInt=${hdrMeta.bgInt}, exposure=${hdrMeta.exposure}` : '')
+          this.$emit('model-loaded', { url })
+        } catch (error) {
+          console.error(`[GLTF] 模型加载失败: ${url}`, error)
+          this.$emit('error', { type: 'gltf', error, url })
+        }
       }
     },
 
     // ========== 公共方法（外部通过 ref 调用） ==========
 
-    /** 按 mesh name 查找部件，返回 Object3D 或 null */
+    /** 按 mesh name 查找部件，返回 Object3D 或 null（支持提前终止） */
     findPartByName(name) {
       const root = this.controller?.getGltfModelLoader()?.root
       if (!root) return null
-      let found = null
-      root.traverse((obj) => {
-        if (obj.name === name && !found) found = obj
-      })
-      return found
+
+      const search = (node) => {
+        if (node.name === name) return node
+        for (const child of node.children) {
+          const found = search(child)
+          if (found) return found
+        }
+        return null
+      }
+      return search(root)
     },
 
     /**
@@ -135,7 +159,7 @@ export default defineComponent({
       if (typeof matKey === 'string') {
         const mc = new MaterialConfigurator(this.controller?.renderer)
         const mat = mc.getMaterialByKey(matKey)
-        if (!mat || !(mat instanceof THREE.Material)) return false
+        if (!mat || !mat.isMaterial) return false
         part.traverse((c) => { if (c.isMesh) c.material = mat })
         return true
       }
@@ -162,7 +186,7 @@ export default defineComponent({
 })
 </script>
 
-<style>
+<style scoped>
 .viewer-panel,
 .viewer-panel .viewer-canvas {
   width: 100%;

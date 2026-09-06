@@ -33,7 +33,7 @@ export class TilesViewerController {
   environment
 
   // ---- 3D Tiles 状态 ----
-  tilesRenderer = null
+  tilesRenderers = []
   tilesetSource = null
   tilesetReady = false
 
@@ -70,8 +70,9 @@ export class TilesViewerController {
       scene: this.scene,
       renderer: this.renderer,
       getEcefToSceneTransform: () => {
-        const group = this.tilesRenderer?.group
-        if (!group) return null
+        const first = this.tilesRenderers[0]
+        if (!first) return null
+        const group = first.group
         group.updateMatrixWorld(true)
         return group.matrixWorld.clone()
       },
@@ -140,103 +141,88 @@ export class TilesViewerController {
     this.renderer.domElement.style.opacity = '1'
 
     this.startLoop()
-
-    window.__tilesViewer = this
   }
 
-  /** 加载 3D Tiles 场景 */
+  /** 加载 3D Tiles 场景（支持多个数据源） */
   async loadScene(sources) {
     if (!this.container) {
       throw new Error('Three.js 容器尚未挂载。')
     }
 
     this.sceneBounds.makeEmpty()
+    this.clearTileset()
 
     // ---- 加载 3D Tiles 作为外壳（Layer 0）----
-    const source = sources.find((item) => item.url)
-    if (!source) {
+    const validSources = sources.filter((item) => item.url)
+    if (validSources.length === 0) {
       throw new Error('未提供可加载的 3DTiles 数据源。')
     }
 
-    this.clearTileset()
-
-    this.tilesetSource = source
-    this.tilesRenderer = new TilesRenderer(source.url)
-    this.tilesRenderer.setCamera(this.cameraManager.camera)
-    this.tilesRenderer.setResolutionFromRenderer(this.cameraManager.camera, this.renderer)
-
-    // 坐标 recenter（ECEF 大坐标场景归到原点附近，并自动对齐地表法线方向）
-    this.tilesRenderer.registerPlugin(new ReorientationPlugin({ up: '+z', recenter: true }))
-
-    // 瓦片网格分配到 Layer 0（外壳层）
-    this.tilesRenderer.addEventListener('load-model', ({ scene }) => {
-      scene.traverse((obj) => {
-        if (obj.isMesh) {
-          obj.layers.set(0)
-        }
-      })
-    })
-
-    // 适配大场景 + 错误处理
+    this.tilesetSource = validSources[0]
     let isFirstTileSet = true
     const boundingSphere = new THREE.Sphere()
 
-    this.tilesRenderer.addEventListener('load-tile-set', () => {
-      const renderer = this.tilesRenderer
-      if (!renderer) return
+    for (const source of validSources) {
+      const tilesRenderer = new TilesRenderer(source.url)
+      tilesRenderer.setCamera(this.cameraManager.camera)
+      tilesRenderer.setResolutionFromRenderer(this.cameraManager.camera, this.renderer)
 
-      if (renderer.getBoundingSphere(boundingSphere)) {
-        const radius = boundingSphere.radius
+      // 坐标 recenter
+      tilesRenderer.registerPlugin(new ReorientationPlugin({ up: '+z', recenter: true }))
 
-        // ReorientationPlugin 已完成居中 + 旋转，计算场景范围
-        const center = new THREE.Vector3(0, 0, 0)
-        this.sceneBounds.setFromCenterAndSize(
-          center,
-          new THREE.Vector3(radius * 2, radius * 2, radius * 2),
-        )
+      // 瓦片网格分配到 Layer 0（外壳层）
+      tilesRenderer.addEventListener('load-model', ({ scene }) => {
+        scene.traverse((obj) => {
+          if (obj.isMesh) obj.layers.set(0)
+        })
+      })
 
-        // 调整相机 near/far 以适应大场景
-        const cam = this.cameraManager.camera
-        cam.near = Math.max(radius * 0.0001, 0.01)
-        cam.far = radius * 10
-        cam.updateProjectionMatrix()
+      // 适配大场景 + 错误处理
+      tilesRenderer.addEventListener('load-tile-set', () => {
+        if (tilesRenderer.getBoundingSphere(boundingSphere)) {
+          const radius = boundingSphere.radius
+          const center = new THREE.Vector3(0, 0, 0)
+          this.sceneBounds.setFromCenterAndSize(
+            center,
+            new THREE.Vector3(radius * 2, radius * 2, radius * 2),
+          )
 
-        // 动态设置缩放范围
-        this.cameraManager.controls.minDistance = radius * 0.01
-        this.cameraManager.controls.maxDistance = radius * 3
-        this.cameraManager.controls.update()
-      }
+          const cam = this.cameraManager.camera
+          cam.near = Math.max(radius * 0.0001, 0.01)
+          cam.far = radius * 10
+          cam.updateProjectionMatrix()
 
-      this.tilesetReady = true
+          this.cameraManager.controls.minDistance = radius * 0.01
+          this.cameraManager.controls.maxDistance = radius * 3
+          this.cameraManager.controls.update()
+        }
 
-      // 只在首次 tileset 加载完成时自动定位相机
-      if (!isFirstTileSet) return
-      isFirstTileSet = false
+        this.tilesetReady = true
 
-      if (!this.cameraManager.isViewSettled() && !this.sceneBounds.isEmpty()) {
-        const box = new THREE.Box3().copy(this.sceneBounds)
-        const gltfBox = new THREE.Box3().setFromObject(this.gltfModelLoader.root)
-        if (!gltfBox.isEmpty()) box.union(gltfBox)
-        this.cameraManager.fitToBox(box)
-      }
-    })
+        // 只在首次 tileset 加载完成时自动定位相机
+        if (!isFirstTileSet) return
+        isFirstTileSet = false
 
-    // 瓦片加载错误处理
-    this.tilesRenderer.addEventListener('load-tile-error', (e) => {
-      console.warn('[TilesViewerController] 瓦片加载错误:', e)
-    })
+        if (!this.cameraManager.isViewSettled() && !this.sceneBounds.isEmpty()) {
+          const box = new THREE.Box3().copy(this.sceneBounds)
+          const gltfBox = new THREE.Box3().setFromObject(this.gltfModelLoader.root)
+          if (!gltfBox.isEmpty()) box.union(gltfBox)
+          this.cameraManager.fitToBox(box)
+        }
+      })
 
-    this.tilesetRoot.add(this.tilesRenderer.group)
+      tilesRenderer.addEventListener('load-tile-error', (e) => {
+        console.warn('[TilesViewerController] 瓦片加载错误:', e)
+      })
+
+      this.tilesetRoot.add(tilesRenderer.group)
+      this.tilesRenderers.push(tilesRenderer)
+    }
   }
 
   /** 获取 GLTF 模型加载器实例 */
   getGltfModelLoader() {
     return this.gltfModelLoader
-  }
-
-  /** 用 NDC 坐标手动拾取 GLB 部件（调试工具） */
-  pickGltfAt(ndcX, ndcY) {
-    return this.gltfModelLoader.pick(this.cameraManager.camera, new THREE.Vector2(ndcX, ndcY))
   }
 
   /** 清除 GLB 部件高亮 */
@@ -255,19 +241,10 @@ export class TilesViewerController {
     }
   }
 
-  /** 获取环境管理器实例 */
-  getEnvironment() {
-    return this.environment
-  }
-
   // ========== 销毁 ==========
 
   /** 销毁控制器，释放所有 GPU 资源与 DOM 监听 */
   destroy() {
-    if (window.__tilesViewer === this) {
-      window.__tilesViewer = null
-    }
-
     cancelAnimationFrame(this.animationFrameId)
     this.resizeObserver.disconnect()
     this.gltfModelLoader.disablePicking()
@@ -298,8 +275,8 @@ export class TilesViewerController {
 
       const cam = this.cameraManager.camera
       cam.updateMatrixWorld()
-      if (this.tilesRenderer && this.tilesRenderer.group.visible) {
-        this.tilesRenderer.update()
+      for (const tr of this.tilesRenderers) {
+        if (tr.group.visible) tr.update()
       }
 
       if (this.dualPass) {
@@ -342,14 +319,14 @@ export class TilesViewerController {
 
   // ========== 3D Tiles 管理 ==========
 
-  /** 释放并移除当前瓦片渲染器 */
+  /** 释放并移除所有瓦片渲染器 */
   clearTileset() {
-    if (this.tilesRenderer) {
-      this.tilesRenderer.deleteCamera(this.cameraManager.camera)
-      this.tilesetRoot.remove(this.tilesRenderer.group)
-      this.tilesRenderer.dispose()
-      this.tilesRenderer = null
+    for (const tr of this.tilesRenderers) {
+      tr.deleteCamera(this.cameraManager.camera)
+      this.tilesetRoot.remove(tr.group)
+      tr.dispose()
     }
+    this.tilesRenderers = []
     this.tilesetSource = null
     this.tilesetReady = false
   }
@@ -358,17 +335,16 @@ export class TilesViewerController {
 
   /**
    * 等待地形瓦片集根节点就绪。
-   * 每 100ms 轮询检测 root 是否就绪。
+   * 每 100ms 轮询检测，默认 30s 超时。
    */
-  whenTerrainReady() {
-    const tilesRenderer = this.tilesRenderer
-    if (!tilesRenderer) {
+  whenTerrainReady(timeout = 30000) {
+    if (this.tilesRenderers.length === 0) {
       console.warn('[loadGltf] 未加载地形瓦片集，无法进行地理配准。')
       return Promise.resolve()
     }
 
     const isReady = () =>
-      this.tilesetReady || Boolean(tilesRenderer.root)
+      this.tilesetReady || this.tilesRenderers.some((tr) => Boolean(tr.root))
     if (isReady()) return Promise.resolve()
 
     return new Promise((resolve) => {
@@ -378,6 +354,10 @@ export class TilesViewerController {
           resolve()
         }
       }, 100)
+      window.setTimeout(() => {
+        window.clearInterval(timerId)
+        resolve()
+      }, timeout)
     })
   }
 
@@ -394,7 +374,9 @@ export class TilesViewerController {
     this.renderer.setPixelRatio(this.getPreferredPixelRatio())
 
     // 窗口变化时重新同步瓦片 SSE 分辨率
-    this.tilesRenderer?.setResolutionFromRenderer(this.cameraManager.camera, this.renderer)
+    for (const tr of this.tilesRenderers) {
+      tr.setResolutionFromRenderer(this.cameraManager.camera, this.renderer)
+    }
 
     // 双透模式下同步内相机与渲染目标尺寸
     if (this.dualPass) {

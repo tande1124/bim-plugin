@@ -1,10 +1,7 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { disposeObject3D } from './common/three-dispose'
-import {
-  calibrateGeoReferenceFromAnchor,
-  createGeoReferenceMatrix,
-} from './common/geo-coordinate'
+import { createGeoReferenceMatrix } from './common/geo-coordinate'
 
 /**
  * GLTF/GLB 模型加载器。
@@ -254,21 +251,6 @@ export class GltfModelLoader {
     })
   }
 
-  /**
-   * 设置所有 GLB 网格与轮廓线的图层。
-   * @param {number} layer
-   */
-  setLayer(layer) {
-    this.currentLayer = layer
-    this.root.traverse((obj) => {
-      if (obj.isMesh) obj.layers.set(layer)
-    })
-    this.outlineGroup.layers.set(layer)
-    this.outlineGroup.traverse((obj) => {
-      if (obj.isMesh) obj.layers.set(layer)
-    })
-  }
-
   /** 清除当前选中，恢复原始材质并移除轮廓网格 */
   clearHighlight() {
     // 恢复原始材质
@@ -288,11 +270,6 @@ export class GltfModelLoader {
     this.highlightedObject = null
   }
 
-  /** 当前选中的部件对象（null 表示无选中） */
-  getHighlightedObject() {
-    return this.highlightedObject
-  }
-
   /** 清除并释放所有已加载的 GLTF 模型 */
   clear() {
     this.clearHighlight()
@@ -301,34 +278,6 @@ export class GltfModelLoader {
   }
 
   // ========== 地理配准 ==========
-
-  /**
-   * 用一个已知公共点反算 GLB 的地理配准参数（调试工具）。
-   * @param {{ x: number, y: number, z: number }} local
-   * @param {number} longitude
-   * @param {number} latitude
-   * @param {number} height
-   * @param {number} [verticalScale=1]
-   * @param {number} [centralMeridianDeg=114]
-   */
-  calibrateFromAnchor(
-    local,
-    longitude,
-    latitude,
-    height,
-    verticalScale = 1,
-    centralMeridianDeg = 114,
-  ) {
-    const params = calibrateGeoReferenceFromAnchor(
-      local,
-      { longitude, latitude, height },
-      centralMeridianDeg,
-      verticalScale,
-    )
-    console.log('[地理配准] 已用已知点反算参数，写入模型配置即可自动定位:')
-    console.log(JSON.stringify(params, null, 2))
-    return params
-  }
 
   /** 按地理配准参数把 GLB 定位到场景（等待地形就绪后应用矩阵） */
   async applyGeoReference(model, params) {

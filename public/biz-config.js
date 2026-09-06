@@ -1,5 +1,6 @@
 // 业务配置
 window.BizConfig = {
+    // GLTF 模型地理坐标配置
     gltfGeoConfig: {
         // 中央子午线经度（度）。
         // 投影坐标系（如 CGCS2000 3度带）的中心经线，
@@ -22,6 +23,6 @@ window.BizConfig = {
         // 垂直缩放比例。
         // 1 = 原始比例不变；>1 拉伸地形起伏；<1 压缩地形起伏。
         // 通常保持为 1，仅在需要夸张地形高差时调整。
-        verticalScale: 1,
+        verticalScale: 1
     }
 }
