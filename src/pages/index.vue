@@ -15,7 +15,7 @@ export default {
     data() {
         return {
             tilesetUrls: ['./data/3dtiles/tileset.json'],
-            gltfUrls: ['./data/gltf/jfs-bim.glb'],
+            gltfUrls: ['./data/gltf/jfs-bim.glb']
         }
     },
     methods: {

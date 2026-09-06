@@ -4,6 +4,7 @@ node_modules
 /local-config.js
 .temp_cache
 report.html
+public/data
 
 # Log files
 npm-debug.log*

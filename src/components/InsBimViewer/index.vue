@@ -87,9 +87,9 @@ export default defineComponent({
     async loadGltfModels() {
       if (!this.controller) return
       const loader = this.controller.getGltfModelLoader()
-      const geoConfig = window.__GLTF_GEO_CONFIG__
+      const geoConfig = window.BizConfig.gltfGeoConfig
       if (!geoConfig) {
-        console.warn('[GLTF] 未找到地理配准配置 (public/config/config.js)，跳过 geo 定位。')
+        this.$message.warning('[GLTF] 未找到地理配准配置 ,跳过 geo 定位。')
       }
 
       for (const url of this.gltfUrls) {
