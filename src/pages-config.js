@@ -2,10 +2,10 @@
 
 module.exports = [
     {
-        path: '/hello-world',
-        component: () => import('@biz/pages/hello-world'),
+        path: '/index',
+        component: () => import('@biz/pages/index'),
         meta: {
-            title: '你好世界',
+            title: 'BIM',
         }
     },
 ]

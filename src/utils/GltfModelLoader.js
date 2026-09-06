@@ -1,10 +1,10 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { disposeObject3D } from '@/utils/common/three-dispose'
+import { disposeObject3D } from './common/three-dispose'
 import {
   calibrateGeoReferenceFromAnchor,
   createGeoReferenceMatrix,
-} from '@/utils/common/geo-coordinate'
+} from './common/geo-coordinate'
 
 /**
  * GLTF/GLB 模型加载器。

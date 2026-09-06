@@ -1,10 +1,10 @@
 import * as THREE from 'three'
 import { TilesRenderer } from '3d-tiles-renderer'
 import { ReorientationPlugin } from '3d-tiles-renderer/three/plugins'
-import { disposeObject3D } from '@/utils/common/three-dispose'
-import { EnvironmentManager } from '@/utils/common/environment'
-import { CameraManager } from '@/utils/common/camera'
-import { GltfModelLoader } from '@/utils/GltfModelLoader'
+import { disposeObject3D } from './common/three-dispose'
+import { EnvironmentManager } from './common/environment'
+import { CameraManager } from './common/camera'
+import { GltfModelLoader } from './GltfModelLoader'
 
 // ========== 控制器 ==========
 

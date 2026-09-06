@@ -2,9 +2,9 @@
 
 module.exports = {
     account: {
-        appCode:    '<appCode>', // 必填
-        appName:    '<appName>', // 必填
-        moduleCode: '<moduleCode>', // 必填
-        moduleName: '<moduleName>', // 必填
+        appCode:    'UNIGISSERVER3', // 必填
+        appName:    'UniGISServer3', // 必填
+        moduleCode: 'UNIGISSERVER3', // 必填
+        moduleName: 'UNIGISSERVER3', // 必填
     },
 }

@@ -1,16 +1,14 @@
 <template>
   <div class="viewer-panel">
-    <div class="viewer-stage">
       <div ref="viewerRoot" class="viewer-canvas"></div>
-    </div>
   </div>
 </template>
 
 <script>
 import { defineComponent, markRaw } from 'vue'
 import * as THREE from 'three'
-import { TilesViewerController } from '@/utils/TilesViewerController'
-import { MaterialConfigurator } from '@/utils/common/material'
+import { TilesViewerController } from '../../utils/TilesViewerController'
+import { MaterialConfigurator } from '../../utils/common/material'
 
 export default defineComponent({
   name: 'ThreeTilesViewer',
@@ -164,5 +162,13 @@ export default defineComponent({
 })
 </script>
 
-<style scoped>
+<style>
+.viewer-panel,
+.viewer-panel .viewer-canvas {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
 </style>
