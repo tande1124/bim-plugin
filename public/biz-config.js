@@ -2,7 +2,7 @@
 window.BizConfig = {
     // GLTF 模型地理坐标配置
     gltfGeoConfig: {
-        // 中央子午线经度（度）。
+        // 中央经线带号（度）。
         // 投影坐标系（如 CGCS2000 3度带）的中心经线，
         // 用于将模型局部坐标对齐到正确的投影带。
         centralMeridianDeg: 99,

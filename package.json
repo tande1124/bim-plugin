@@ -4,6 +4,12 @@
     "main": "./src/main.js",
     "license": "UNLICENSED",
     "description": "基于uniserver3.0的bim插件",
+    "files": [
+        "src/",
+        "public/",
+        "package.json",
+        "README.md"
+    ],
     "scripts": {
         "update-version": "npm version patch -m 'update: #0 更新版本号%s'",
         "publish": "npm publish",
