@@ -1,10 +1,58 @@
 import * as THREE from 'three'
 import { TilesRenderer } from '3d-tiles-renderer'
-import { ReorientationPlugin } from '3d-tiles-renderer/three/plugins'
+import { GLTFExtensionsPlugin, ReorientationPlugin } from '3d-tiles-renderer/three/plugins'
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { disposeObject3D } from './common/three-dispose'
 import { EnvironmentManager } from './common/environment'
 import { CameraManager } from './common/camera'
 import { GltfModelLoader } from './GltfModelLoader'
+
+// ========== KTX2 压缩贴图支持 ==========
+
+/**
+ * Basis Universal（KTX2）转码器资源路径。
+ *
+ * three 的 KTX2Loader 需要 basis_transcoder.{js,wasm}，这里从
+ * node_modules/three/examples/jsm/libs/basis 拷贝到 public/libs/basis
+ * 后在运行时按 URL 加载，避免打包器改写模块内相对路径。
+ */
+const KTX2_TRANSCODER_PATH = './libs/basis/'
+
+/**
+ * GLTF loader 插件：补齐 cesiumlab（osgb2tiles 等工具）3D Tiles 的贴图解码。
+ *
+ * 这类 b3dm 内嵌的 glTF 把压缩贴图写成 image/ktx2 图片并被 texture.source 直接引用，
+ * 却不带 KHR_texture_basisu 扩展；three 的 GLTFLoader 默认把这类图片当作普通图片解码，
+ * 解码失败后贴图为 null，模型就会退化成无贴图的“白膜”。
+ *
+ * 该插件在 GLTFLoader 解析 texture 依赖时被优先调用，凡是图片为 image/ktx2 的贴图
+ * 一律交给 KTX2Loader 解码（与 KHR_texture_basisu 官方路径走同一入口 loadTextureImage），
+ * 其余普通贴图返回 null 走 three 默认逻辑，不影响 JPEG/PNG 数据源。
+ */
+class RawKtx2TexturePlugin {
+  constructor(parser, ktx2Loader) {
+    this.parser = parser
+    this.ktx2Loader = ktx2Loader
+    this.name = 'RawKtx2TexturePlugin'
+  }
+
+  loadTexture(textureIndex) {
+    const json = this.parser.json
+    const textureDef = json.textures?.[textureIndex]
+    const sourceIndex = textureDef?.source
+    if (sourceIndex === undefined || sourceIndex === null) return null
+
+    const imageDef = json.images?.[sourceIndex]
+    if (!imageDef) return null
+
+    const isKtx2 =
+      imageDef.mimeType === 'image/ktx2' ||
+      (typeof imageDef.uri === 'string' && /\.ktx2($|\?)/i.test(imageDef.uri))
+    if (!isKtx2) return null
+
+    return this.parser.loadTextureImage(textureIndex, sourceIndex, this.ktx2Loader)
+  }
+}
 
 // ========== 控制器 ==========
 
@@ -114,6 +162,14 @@ export class TilesViewerController {
     this.renderer.toneMappingExposure = 1
     this.renderer.autoClear = false // 双透模式手动控制清屏
 
+    // KTX2（Basis Universal）纹理解码器：cesiumlab 等产出的 3D Tiles
+    // b3dm 贴图为 image/ktx2，无解码器时贴图加载失败、模型呈白膜。
+    // 共享给所有瓦片渲染器，由 clearTileset/destroy 管理生命周期。
+    this.ktx2Loader = new KTX2Loader()
+      .setTranscoderPath(KTX2_TRANSCODER_PATH)
+      .setWorkerLimit(2)
+      .detectSupport(this.renderer)
+
     // 画布初始透明，等环境配置就绪后淡入，避免黑屏
     this.renderer.domElement.style.opacity = '0'
     this.renderer.domElement.style.transition = 'opacity 0.6s ease'
@@ -169,6 +225,18 @@ export class TilesViewerController {
 
       // 坐标 recenter
       tilesRenderer.registerPlugin(new ReorientationPlugin({ up: '+z', recenter: true }))
+
+      // KTX2 压缩贴图解码：把带 KTX2Loader 的 GLTF loader 挂到瓦片渲染器上，
+      // 并注册自定义插件解码 cesiumlab 内嵌 image/ktx2（无 basisu 扩展）的贴图
+      tilesRenderer.registerPlugin(
+        new GLTFExtensionsPlugin({
+          metadata: false,
+          rtc: false,
+          ktxLoader: this.ktx2Loader,
+          autoDispose: false,
+          plugins: [(parser) => new RawKtx2TexturePlugin(parser, this.ktx2Loader)],
+        }),
+      )
 
       // 瓦片网格分配到 Layer 0（外壳层）
       tilesRenderer.addEventListener('load-model', ({ scene }) => {
@@ -252,6 +320,8 @@ export class TilesViewerController {
     this.cameraManager.dispose()
     this.environment.dispose()
     this.rtInner.dispose()
+    this.ktx2Loader?.dispose()
+    this.ktx2Loader = null
 
     disposeObject3D(this.scene)
     this.scene.clear()
