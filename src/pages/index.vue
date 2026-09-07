@@ -14,8 +14,8 @@
 export default {
     data() {
         return {
-            tilesetUrls: ['./data/3dtiles/tileset.json'],
-            gltfUrls: ['./data/gltf/jfs-bim.glb']
+            tilesetUrls: ['http://127.0.0.1:3000/data/3dtiles/rm/tileset.json'],
+            gltfUrls: ['http://127.0.0.1:3000/data/gltf/rm/RM_.glb']
         }
     },
     methods: {

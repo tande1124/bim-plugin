@@ -5,6 +5,7 @@ node_modules
 .temp_cache
 report.html
 public/data
+data-server.js
 
 # Log files
 npm-debug.log*
