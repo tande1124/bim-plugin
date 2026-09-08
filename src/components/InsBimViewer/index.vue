@@ -60,7 +60,7 @@ export default defineComponent({
         }),
       )
       await this.controller.mount(viewerRoot)
-      this.$emit('ready')
+      this.$emit('ready', this.controller)
 
       // 加载 3D Tiles 地形（无数据源或加载失败时跳过，不影响 GLB 加载）
       if (this.tilesetUrls.length > 0) {
@@ -176,12 +176,7 @@ export default defineComponent({
     /** 清除当前高亮 */
     clearHighlight() {
       this.controller?.clearGltfHighlight()
-    },
-
-    /** 获取底层控制器实例（高级用法） */
-    getController() {
-      return this.controller
-    },
+    }
   },
 })
 </script>

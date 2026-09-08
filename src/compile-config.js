@@ -1,4 +1,6 @@
 // 这里放运行时配置
+const path = require('path')
+
 
 module.exports = {
     account: {
@@ -8,6 +10,7 @@ module.exports = {
         moduleCode: 'UNIGISSERVER3',
         moduleName: 'UNIGISSERVER3',
     },
+    rootDir: path.join(__dirname, '..'),
     // 主题配置
     theme: {
         theme: 'river',
@@ -16,7 +19,12 @@ module.exports = {
 
     html: {
         title: {
-            text: 'UniGIS',
+            text: 'bimViewer',
         }
-    }
+    },
+    resolve: {
+        alias: {
+            '@plugin-bim': __dirname
+        },
+    },
 }
