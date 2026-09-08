@@ -5,6 +5,6 @@
 import InsBimViewer from './components/InsBimViewer'
 export default {
     install(app) {
-        app.component('InsBimViewer', InsBimViewer)
+        app.component('InsBimPlusViewer', InsBimViewer)
     }
 }

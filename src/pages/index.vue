@@ -1,5 +1,5 @@
 <template>
-    <InsBimViewer ref="bimViewer" :tileset-urls="tilesetUrls" :gltf-urls="gltfUrls" @ready="onReady"
+    <InsBimPlusViewer ref="bimViewer" :tileset-urls="tilesetUrls" :gltf-urls="gltfUrls" @ready="onReady"
         @gltf-pick="onPartClick" @model-loaded="onModelLoaded" @error="onError" />
 </template>
 
