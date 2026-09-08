@@ -339,7 +339,7 @@ export class TilesViewerController {
     cancelAnimationFrame(this.animationFrameId)
     this.resizeObserver.disconnect()
     this.gltfModelLoader.disablePicking()
-    this.clearLabels()
+    this.clearAnnotations()
     this.clearTileset()
     this.cameraManager.dispose()
     this.environment.dispose()

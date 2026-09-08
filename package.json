@@ -1,6 +1,6 @@
 {
     "name": "@ins/vam2-plugin-bim",
-    "version": "1.0.0-beta.3",
+    "version": "1.0.0-beta.4",
     "main": "./src/main.js",
     "license": "UNLICENSED",
     "description": "基于uniserver3.0的bim插件",

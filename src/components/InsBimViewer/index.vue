@@ -51,7 +51,6 @@ export default defineComponent({
     /** 初始化 Three.js 场景并加载默认地形与模型 */
     async bootstrap() {
       const viewerRoot = this.$refs.viewerRoot
-
       if (!viewerRoot) {
         return
       }
@@ -59,6 +58,7 @@ export default defineComponent({
       this.controller = markRaw(
         new TilesViewerController({
           onGltfPick: (info) => {
+            console.log('Gltf 模型点击事件', info)
             this.$emit('gltf-pick', info)
           },
         }),
@@ -71,7 +71,7 @@ export default defineComponent({
         try {
           await this.loadTilesets()
         } catch (error) {
-          console.warn('3DTiles 场景加载失败，将仅加载 GLB 模型。', error)
+          this.$message.warning('3DTiles 场景加载失败',error)
           this.$emit('error', { type: 'tileset', error })
         }
       }
@@ -81,7 +81,7 @@ export default defineComponent({
         try {
           await this.loadGltfModels()
         } catch (error) {
-          console.error('GLTF 模型加载失败。', error)
+          this.$message.error('GLB 模型加载失败',error)
           this.$emit('error', { type: 'gltf', error })
         }
       }
@@ -130,7 +130,7 @@ export default defineComponent({
           console.log(`[材质配置] ${url} 已应用 ${appliedCount} 个网格材质`, hdrMeta ? `| HDR: envInt=${hdrMeta.envInt}, bgInt=${hdrMeta.bgInt}, exposure=${hdrMeta.exposure}` : '')
           this.$emit('model-loaded', { url })
         } catch (error) {
-          console.error(`模型加载失败: ${url}`, error)
+          this.$message.error(`模型加载失败: ${url}`,error)
           this.$emit('error', { type: 'gltf', error, url })
         }
       }
@@ -138,20 +138,13 @@ export default defineComponent({
 
     // ========== 公共方法（外部通过 ref 调用） ==========
 
-    /** 按 mesh name 查找部件，返回 Object3D 或 null（支持提前终止） */
+    /**
+     * 按名称查找部件，返回结构化信息（与 gltf-pick 事件 info 格式一致）。
+     * @param {string} name - 部件名称
+     * @returns {Object|null} { object, name, path, worldPosition, localPosition, screenPosition, model }
+     */
     findPartByName(name) {
-      const root = this.controller?.getGltfModelLoader()?.root
-      if (!root) return null
-
-      const search = (node) => {
-        if (node.name === name) return node
-        for (const child of node.children) {
-          const found = search(child)
-          if (found) return found
-        }
-        return null
-      }
-      return search(root)
+      return this.controller?.getGltfModelLoader()?.findPartByName(name) ?? null
     },
 
     /**
@@ -161,11 +154,12 @@ export default defineComponent({
      * @returns {boolean}
      */
     setPartMaterial(name, matKey) {
-      const part = this.findPartByName(name)
-      if (!part) {
+      const info = this.findPartByName(name)
+      if (!info) {
         console.warn(`部件 "${name}" 未找到`)
         return false
       }
+      const part = info.object
       if (typeof matKey === 'string') {
         const mc = new MaterialConfigurator(this.controller?.renderer)
         const mat = mc.getMaterialByKey(matKey)
@@ -180,11 +174,12 @@ export default defineComponent({
     /** 按 name 高亮部件（半透明 + 轮廓线）并飞行聚焦 */
     highlightPart(name) {
       const loader = this.controller?.getGltfModelLoader()
-      const part = this.findPartByName(name)
-      if (!part || !loader) return false
-      loader.highlight(part)
-      loader.flyToObject(part)
-      return true
+      const info = this.findPartByName(name)
+      if (!info || !loader) return false
+      loader.highlight(info.object)
+      loader.flyToObject(info.object)
+      console.log(`已高亮部件 "${name}"`, info)
+      return info
     },
 
     /** 清除当前高亮 */

@@ -3,7 +3,6 @@
     <div class="part-label-dot"></div>
     <div class="part-label-card">
       <div class="part-label-name">{{ name }}</div>
-      <div v-if="path" class="part-label-path">{{ path }}</div>
     </div>
   </div>
 </template>

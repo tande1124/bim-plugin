@@ -182,13 +182,31 @@ export class GltfModelLoader {
     // 选中整个「部件」：取命名的最近祖先
     const part = this.resolvePartObject(object, model)
 
+    // 将 3D 世界坐标投影为屏幕坐标（像素，左上角原点）
+    let screenX = 0, screenY = 0
+    if (this.pickDomElement) {
+      const vector = hit.point.clone().project(camera)
+      const rect = this.pickDomElement.getBoundingClientRect()
+      screenX = (vector.x * 0.5 + 0.5) * rect.width
+      screenY = (-vector.y * 0.5 + 0.5) * rect.height
+    }
+
     return {
+      /** 选中的部件 Object3D（命名的最近祖先） */
       object: part,
+      /** 部件名称 */
       name: this.resolveObjectName(part),
+      /** 部件在模型树中的完整路径（如 "model/xxx/围堰工程"） */
       path: this.buildObjectPath(part, model),
+      /** 射线命中点的 3D 世界坐标 */
       worldPosition: hit.point.clone(),
+      /** 射线命中点在模型局部坐标系中的位置 */
       localPosition: model.worldToLocal(hit.point.clone()),
+      /** 射线命中点投影到画布的屏幕像素坐标（左上角原点） */
+      screenPosition: { x: screenX, y: screenY },
+      /** 射线起点到命中点的距离 */
       distance: hit.distance,
+      /** 所属 GLB 模型根节点 */
       model,
     }
   }
@@ -400,6 +418,62 @@ export class GltfModelLoader {
       node = node.parent
     }
     return true
+  }
+
+  /**
+   * 按名称查找部件，返回结构化信息（与 pick 返回格式一致）。
+   * 遍历模型树查找第一个 name 匹配的节点，未找到返回 null。
+   * @param {string} name - 部件名称
+   * @returns {Object|null}
+   */
+  findPartByName(name) {
+    if (this.root.children.length === 0) return null
+
+    const search = (node) => {
+      if (node.name === name) return node
+      for (const child of node.children) {
+        const found = search(child)
+        if (found) return found
+      }
+      return null
+    }
+
+    const object = search(this.root)
+    if (!object) return null
+
+    const model = this.findModelRoot(object)
+    if (!model) return null
+
+    // 用包围盒中心作为部件的世界坐标
+    object.updateMatrixWorld(true)
+    const box = new THREE.Box3().setFromObject(object)
+    const worldPos = box.getCenter(new THREE.Vector3())
+
+    // 投影到屏幕坐标（需要已启用拾取的相机和画布）
+    let screenX = 0, screenY = 0
+    if (this.pickCamera && this.pickDomElement) {
+      const vector = worldPos.clone().project(this.pickCamera)
+      const rect = this.pickDomElement.getBoundingClientRect()
+      screenX = (vector.x * 0.5 + 0.5) * rect.width
+      screenY = (-vector.y * 0.5 + 0.5) * rect.height
+    }
+
+    return {
+      /** 选中的部件 Object3D */
+      object,
+      /** 部件名称 */
+      name: this.resolveObjectName(object),
+      /** 部件在模型树中的完整路径 */
+      path: this.buildObjectPath(object, model),
+      /** 部件包围盒中心的 3D 世界坐标 */
+      worldPosition: worldPos,
+      /** 部件包围盒中心在模型局部坐标系中的位置 */
+      localPosition: model.worldToLocal(worldPos.clone()),
+      /** 部件包围盒中心投影到画布的屏幕像素坐标（左上角原点） */
+      screenPosition: { x: screenX, y: screenY },
+      /** 所属 GLB 模型根节点 */
+      model,
+    }
   }
 
   /** 找到命中对象所属的模型根节点 */

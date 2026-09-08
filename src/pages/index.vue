@@ -1,6 +1,7 @@
 <template>
     <InsBimPlusViewer ref="bimViewer" :tileset-urls="tilesetUrls" :gltf-urls="gltfUrls" @ready="onReady"
         @gltf-pick="onPartClick" @model-loaded="onModelLoaded" @error="onError" />
+        <button @click="handleSceneEvent">点击我</button>
 </template>
 
 <script>
@@ -19,11 +20,9 @@ export default {
         // 获取底层控制器实例
         onReady(controller) {
             this.controller = controller
-            console.log('[BimViewer] 场景就绪', controller)
         },
         onPartClick(info) {
             if (!info || !this.controller) return
-            console.log('[BimViewer] 点击部件:', info.name, '| 路径:', info.path)
 
             // 创建 DOM 容器，挂载 Vue 组件，添加到 3D 场景
             const el = document.createElement('div')
@@ -32,10 +31,8 @@ export default {
             this.controller.addAnnotation(info.worldPosition, el)
         },
         onModelLoaded({ url }) {
-            console.log('[BimViewer] 模型加载完成:', url)
         },
         onError({ type, error }) {
-            console.warn('[BimViewer] 加载失败:', type, error)
         },
         handleSceneEvent() {
             if (this.$refs.bimViewer) {
@@ -43,7 +40,7 @@ export default {
                 // this.$refs.bimViewer.setPartMaterial(partName, matKey)
 
                 //  按 name 高亮部件（半透明 + 轮廓线） 
-                // this.$refs.bimViewer.highlightPart(partName)
+                this.$refs.bimViewer.highlightPart('围堰工程')
 
                 // 清除当前高亮
                 // this.$refs.bimViewer.clearHighlight()
