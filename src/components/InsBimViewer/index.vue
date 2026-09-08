@@ -1,6 +1,7 @@
 <template>
   <div class="viewer-panel">
       <div ref="viewerRoot" class="viewer-canvas"></div>
+      <CameraInfoDialog :controller="controller" />
   </div>
 </template>
 
@@ -8,9 +9,11 @@
 import { defineComponent, markRaw } from 'vue'
 import { TilesViewerController } from '../../utils/TilesViewerController'
 import { MaterialConfigurator } from '../../utils/common/material'
+import CameraInfoDialog from '../common/CameraInfoDialog.vue'
 
 export default defineComponent({
   name: 'ThreeTilesViewer',
+  components: { CameraInfoDialog },
   props: {
     /** 3D Tiles 数据源 URL 列表 */
     tilesetUrls: {
@@ -80,6 +83,12 @@ export default defineComponent({
           console.error('GLTF 模型加载失败。', error)
           this.$emit('error', { type: 'gltf', error })
         }
+      }
+
+      // 兜底：若无 3D Tiles（load-tile-set 事件未触发），在此应用相机配置
+      const cameraCfg = window.BizConfig?.gltfGeoConfig?.camera
+      if (cameraCfg && !this.controller.cameraManager.isViewSettled()) {
+        this.controller.applyCameraConfig(cameraCfg)
       }
     },
 
@@ -167,10 +176,12 @@ export default defineComponent({
       return true
     },
 
-    /** 按 name 高亮部件（半透明 + 轮廓线） */
+    /** 按 name 高亮部件（半透明 + 轮廓线）并飞行聚焦 */
     highlightPart(name) {
+      const loader = this.controller?.getGltfModelLoader()
       const part = this.findPartByName(name)
-      this.controller?.getGltfModelLoader()?.highlight(part ?? null)
+      loader?.highlight(part ?? null)
+      if (part) loader?.flyToObject(part)
     },
 
     /** 清除当前高亮 */

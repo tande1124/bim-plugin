@@ -59,6 +59,7 @@ export class GltfModelLoader {
    * @param {Function} [deps.whenTerrainReady] - 等待地形瓦片集就绪
    * @param {Function} [deps.onPick] - 点击 GLB 部件时回调
    * @param {Function} [deps.onRequestFitCamera] - 模型加载完成后请求控制器触发相机自动聚焦
+   * @param {Function} [deps.onFlyTo] - 飞行到目标点 (target: Vector3, distance: number, duration?: number)
    */
   constructor(deps) {
     this.deps = deps
@@ -251,6 +252,29 @@ export class GltfModelLoader {
     })
   }
 
+  /**
+   * 飞行聚焦到指定部件：根据包围盒计算观察距离，平滑拉近相机。
+   * @param {THREE.Object3D} object - 要高亮并飞行的部件
+   * @param {number} [duration=900] - 飞行动画时长（ms）
+   */
+  flyToObject(object, duration = 900) {
+    if (!object || !this.deps.onFlyTo) return
+
+    object.updateMatrixWorld(true)
+    const box = new THREE.Box3().setFromObject(object)
+    if (box.isEmpty()) return
+
+    const center = box.getCenter(new THREE.Vector3())
+    const size = box.getSize(new THREE.Vector3())
+    const maxDim = Math.max(size.x, size.y, size.z, 1)
+
+    // 根据 FOV 计算合适的观察距离（与 fitToBox 逻辑一致，系数 2.0 留余量）
+    const halfFov = THREE.MathUtils.degToRad(45 * 0.5)
+    const distance = (maxDim / (2 * Math.tan(halfFov))) * 2.0
+
+    this.deps.onFlyTo(center, distance, duration)
+  }
+
   /** 清除当前选中，恢复原始材质并移除轮廓网格 */
   clearHighlight() {
     // 恢复原始材质
@@ -352,8 +376,11 @@ export class GltfModelLoader {
     }
 
     const info = this.pick(this.pickCamera, this.clientToNdc(event, this.pickDomElement))
-    // 命中则高亮该部件，点击空白清除高亮
+    // 命中则高亮该部件并飞行聚焦，点击空白清除高亮
     this.highlight(info?.object ?? null)
+    if (info?.object) {
+      this.flyToObject(info.object)
+    }
     this.deps.onPick?.(info, info ? { x: event.clientX, y: event.clientY } : null)
   }
 

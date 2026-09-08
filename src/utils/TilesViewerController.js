@@ -136,6 +136,10 @@ export class TilesViewerController {
           this.cameraManager.fitToBox(box)
         }
       },
+      onFlyTo: (target, distance, duration) => {
+        // 将计算好的观察距离转换为 flyTo 的 markerScale 参数
+        this.cameraManager.flyTo(target, distance / 12, duration)
+      },
     })
 
     // ---- 双相机透视基础设施 ----
@@ -271,7 +275,11 @@ export class TilesViewerController {
         if (!isFirstTileSet) return
         isFirstTileSet = false
 
-        if (!this.cameraManager.isViewSettled() && !this.sceneBounds.isEmpty()) {
+        // 优先使用配置文件中的相机参数，未配置则自动聚焦到场景包围盒
+        const cameraCfg = window.BizConfig?.gltfGeoConfig?.camera
+        if (cameraCfg) {
+          this.applyCameraConfig(cameraCfg)
+        } else if (!this.cameraManager.isViewSettled() && !this.sceneBounds.isEmpty()) {
           const box = new THREE.Box3().copy(this.sceneBounds)
           const gltfBox = new THREE.Box3().setFromObject(this.gltfModelLoader.root)
           if (!gltfBox.isEmpty()) box.union(gltfBox)
@@ -459,6 +467,36 @@ export class TilesViewerController {
   /** 获取相机管理器实例 */
   getCameraManager() {
     return this.cameraManager
+  }
+
+  /**
+   * 按配置设置相机位置和观察目标。
+   * position 和 target 均为可选，缺省项保持当前值。
+   * @param {Object} cfg
+   * @param {{ x?: number, y?: number, z?: number }} [cfg.position]
+   * @param {{ x?: number, y?: number, z?: number }} [cfg.target]
+   */
+  applyCameraConfig(cfg) {
+    const cam = this.cameraManager.camera
+    const controls = this.cameraManager.controls
+
+    if (cfg.position) {
+      cam.position.set(
+        cfg.position.x ?? cam.position.x,
+        cfg.position.y ?? cam.position.y,
+        cfg.position.z ?? cam.position.z,
+      )
+    }
+    if (cfg.target) {
+      controls.target.set(
+        cfg.target.x ?? controls.target.x,
+        cfg.target.y ?? controls.target.y,
+        cfg.target.z ?? controls.target.z,
+      )
+    }
+
+    controls.update()
+    this.cameraManager.hasSettledView = true
   }
 
   /** 按真实设备像素比渲染，高分屏上限 2x 保护性能 */
