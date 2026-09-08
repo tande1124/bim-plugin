@@ -1,6 +1,7 @@
 <template>
   <div class="viewer-panel">
       <div ref="viewerRoot" class="viewer-canvas"></div>
+      <!-- 相机参数弹窗 -->
       <CameraInfoDialog :controller="controller" />
   </div>
 </template>
@@ -86,7 +87,7 @@ export default defineComponent({
       }
 
       // 兜底：若无 3D Tiles（load-tile-set 事件未触发），在此应用相机配置
-      const cameraCfg = window.BizConfig?.gltfGeoConfig?.camera
+      const cameraCfg = window.BizConfig?.glbConfig?.camera
       if (cameraCfg && !this.controller.cameraManager.isViewSettled()) {
         this.controller.applyCameraConfig(cameraCfg)
       }
@@ -109,9 +110,9 @@ export default defineComponent({
       if (!this.controller) return
       const loader = this.controller.getGltfModelLoader()
       const renderer = this.controller.renderer
-      const geoConfig = window.BizConfig?.gltfGeoConfig
-      if (!geoConfig) {
-        console.warn('[GLTF] 未找到地理配准配置，跳过 geo 定位。')
+      const geoInfo = window.BizConfig?.glbConfig?.geoInfo
+      if (!geoInfo) {
+        console.warn('未找到地理配准配置，跳过 geo 定位。')
       }
 
       // 材质配置器复用（避免循环内重复构建 ID 映射）
@@ -119,7 +120,7 @@ export default defineComponent({
 
       for (const url of this.gltfUrls) {
         try {
-          const model = await loader.loadGltf(url, { geo: geoConfig })
+          const model = await loader.loadGltf(url, { geo: geoInfo })
 
           const { hdrMeta, appliedCount } = await matCfg.applyFromUrl(
             this.materialConfigUrl,
@@ -129,7 +130,7 @@ export default defineComponent({
           console.log(`[材质配置] ${url} 已应用 ${appliedCount} 个网格材质`, hdrMeta ? `| HDR: envInt=${hdrMeta.envInt}, bgInt=${hdrMeta.bgInt}, exposure=${hdrMeta.exposure}` : '')
           this.$emit('model-loaded', { url })
         } catch (error) {
-          console.error(`[GLTF] 模型加载失败: ${url}`, error)
+          console.error(`模型加载失败: ${url}`, error)
           this.$emit('error', { type: 'gltf', error, url })
         }
       }
@@ -180,8 +181,10 @@ export default defineComponent({
     highlightPart(name) {
       const loader = this.controller?.getGltfModelLoader()
       const part = this.findPartByName(name)
-      loader?.highlight(part ?? null)
-      if (part) loader?.flyToObject(part)
+      if (!part || !loader) return false
+      loader.highlight(part)
+      loader.flyToObject(part)
+      return true
     },
 
     /** 清除当前高亮 */

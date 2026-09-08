@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { TilesRenderer } from '3d-tiles-renderer'
 import { GLTFExtensionsPlugin, ReorientationPlugin } from '3d-tiles-renderer/three/plugins'
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js'
 import { disposeObject3D } from './common/three-dispose'
 import { EnvironmentManager } from './common/environment'
 import { CameraManager } from './common/camera'
@@ -73,6 +74,11 @@ export class TilesViewerController {
   tilesetRoot = new THREE.Group()
   gltfModelLoader
   resizeObserver = new ResizeObserver(() => this.handleResize())
+
+  // ---- CSS2D 标注渲染器 ----
+  css2dRenderer = new CSS2DRenderer()
+  /** 已添加的 CSS2D 标注列表，便于统一管理与销毁 */
+  css2dLabels = []
 
   // ---- 相机管理 ----
   cameraManager
@@ -177,6 +183,14 @@ export class TilesViewerController {
     // 画布初始透明，等环境配置就绪后淡入，避免黑屏
     this.renderer.domElement.style.opacity = '0'
     this.renderer.domElement.style.transition = 'opacity 0.6s ease'
+
+    // ---- CSS2DRenderer：在 WebGL 画布上方叠加 HTML 标注层 ----
+    Object.assign(this.css2dRenderer.domElement.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      pointerEvents: 'none',
+    })
   }
 
   // ========== 公共方法 ==========
@@ -186,6 +200,7 @@ export class TilesViewerController {
     this.container = container
     this.container.innerHTML = ''
     this.container.appendChild(this.renderer.domElement)
+    this.container.appendChild(this.css2dRenderer.domElement)
 
     if (container.style.position === '') {
       container.style.position = 'relative'
@@ -276,7 +291,7 @@ export class TilesViewerController {
         isFirstTileSet = false
 
         // 优先使用配置文件中的相机参数，未配置则自动聚焦到场景包围盒
-        const cameraCfg = window.BizConfig?.gltfGeoConfig?.camera
+        const cameraCfg = window.BizConfig?.glbConfig?.camera
         if (cameraCfg) {
           this.applyCameraConfig(cameraCfg)
         } else if (!this.cameraManager.isViewSettled() && !this.sceneBounds.isEmpty()) {
@@ -324,6 +339,7 @@ export class TilesViewerController {
     cancelAnimationFrame(this.animationFrameId)
     this.resizeObserver.disconnect()
     this.gltfModelLoader.disablePicking()
+    this.clearLabels()
     this.clearTileset()
     this.cameraManager.dispose()
     this.environment.dispose()
@@ -390,6 +406,9 @@ export class TilesViewerController {
         // ---- 单层模式：一步渲染 ----
         this.renderer.render(this.scene, cam)
       }
+
+      // CSS2D 标注层始终在主渲染之后绘制
+      this.css2dRenderer.render(this.scene, cam)
     }
 
     renderFrame()
@@ -450,6 +469,7 @@ export class TilesViewerController {
     this.cameraManager.resize(width, height)
     this.renderer.setSize(width, height, false)
     this.renderer.setPixelRatio(this.getPreferredPixelRatio())
+    this.css2dRenderer.setSize(width, height)
 
     // 窗口变化时重新同步瓦片 SSE 分辨率
     for (const tr of this.tilesRenderers) {
@@ -502,5 +522,43 @@ export class TilesViewerController {
   /** 按真实设备像素比渲染，高分屏上限 2x 保护性能 */
   getPreferredPixelRatio() {
     return THREE.MathUtils.clamp(window.devicePixelRatio || 1, 1, 2)
+  }
+
+  // ========== CSS2D 标注管理 ==========
+
+  /**
+   * 在 3D 世界坐标处添加一个 HTML 标注。
+   * @param {THREE.Vector3} position - 世界坐标
+   * @param {HTMLElement} element - DOM 元素（可预先挂载 Vue 组件）
+   * @returns {CSS2DObject} 标注对象引用，可用于后续移除
+   */
+  addAnnotation(position, element) {
+    this.clearAnnotations()
+    const label = new CSS2DObject(element)
+    label.position.copy(position)
+    this.scene.add(label)
+    this.css2dLabels.push(label)
+    return label
+  }
+
+  /** 移除指定标注 */
+  removeAnnotation(label) {
+    this.scene.remove(label)
+    const idx = this.css2dLabels.indexOf(label)
+    if (idx !== -1) this.css2dLabels.splice(idx, 1)
+    if (label.element?.parentNode) {
+      label.element.parentNode.removeChild(label.element)
+    }
+  }
+
+  /** 移除全部标注 */
+  clearAnnotations() {
+    for (const label of this.css2dLabels) {
+      this.scene.remove(label)
+      if (label.element?.parentNode) {
+        label.element.parentNode.removeChild(label.element)
+      }
+    }
+    this.css2dLabels.length = 0
   }
 }
