@@ -65,6 +65,10 @@ export class CameraManager {
     this.controls.maxDistance = 50000
     this.controls.target.set(0, 0, 0)
 
+    // 限制俯仰角，防止相机转到地形下方看到穿透天空
+    // this.controls.minPolarAngle = 0              // 正上方俯视
+    // this.controls.maxPolarAngle = Math.PI * 0.5  // 略低于水平线，禁止从下方仰视
+
     // 用户手动操作后禁止后续自动聚焦覆盖视角
     this.controls.addEventListener('start', () => {
       this.hasSettledView = true

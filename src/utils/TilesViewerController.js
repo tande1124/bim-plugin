@@ -257,10 +257,13 @@ export class TilesViewerController {
         }),
       )
 
-      // 瓦片网格分配到 Layer 0（外壳层）
+      // 瓦片网格分配到 Layer 0（外壳层）并启用双面渲染
       tilesRenderer.addEventListener('load-model', ({ scene }) => {
         scene.traverse((obj) => {
-          if (obj.isMesh) obj.layers.set(0)
+          if (obj.isMesh) {
+            obj.layers.set(0)
+            if (obj.material) obj.material.side = THREE.DoubleSide
+          }
         })
       })
 
