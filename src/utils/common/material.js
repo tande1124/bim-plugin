@@ -241,10 +241,9 @@ export class MaterialConfigurator {
    *
    * @param {string} url - 材质状态 JSON 文件路径（相对 public 目录）
    * @param {THREE.Object3D} model - 已加载的 GLB 模型根节点
-   * @param {string} modelName - 模型逻辑名称，用于匹配 JSON 中的 modelName 字段
    * @returns {Promise<{ hdrMeta: Object|null, appliedCount: number }>}
    */
-  async applyFromUrl(url, model, modelName) {
+  async applyFromUrl(url, model) {
     const response = await fetch(url)
     if (!response.ok) {
       console.warn(`[MaterialConfigurator] 无法加载材质状态: ${url} (${response.status})`)
@@ -252,7 +251,7 @@ export class MaterialConfigurator {
     }
     const arr = await response.json()
     const { entries, hdrMeta } = this.parseStateArray(arr)
-    const appliedCount = this.applyEntries(entries, model, modelName)
+    const appliedCount = this.applyEntries(entries, model)
     return { hdrMeta, appliedCount }
   }
 
@@ -288,11 +287,9 @@ export class MaterialConfigurator {
   }
 
   /** 遍历模型，按 meshName 匹配并应用 matKey 对应的材质。 */
-  applyEntries(entries, model, modelName) {
-    // 过滤当前模型的条目，且 matKey 非空
-    const relevant = entries.filter(
-      (e) => e.modelName === modelName && e.matKey,
-    )
+  applyEntries(entries, model) {
+    // 过滤 matKey 非空的条目
+    const relevant = entries.filter((e) => e.matKey)
     if (relevant.length === 0) return 0
 
     // meshName → matKey 快速查找

@@ -1,8 +1,8 @@
 <template>
   <div class="viewer-panel">
-      <div ref="viewerRoot" class="viewer-canvas"></div>
-      <!-- 相机参数弹窗 -->
-      <CameraInfoDialog :controller="controller" />
+    <div ref="viewerRoot" class="viewer-canvas"></div>
+    <!-- 相机参数弹窗 -->
+    <CameraInfoDialog :controller="controller" />
   </div>
 </template>
 
@@ -31,7 +31,7 @@ export default defineComponent({
     /** 材质配置文件路径 */
     materialConfigUrl: {
       type: String,
-      default: './config/material-config.json',
+      default: '',
     },
   },
   emits: ['ready', 'gltf-pick', 'model-loaded', 'error'],
@@ -71,7 +71,7 @@ export default defineComponent({
         try {
           await this.loadTilesets()
         } catch (error) {
-          this.$message.warning('3DTiles 场景加载失败',error)
+          this.$message.warning('3DTiles 场景加载失败', error)
           this.$emit('error', { type: 'tileset', error })
         }
       }
@@ -81,7 +81,7 @@ export default defineComponent({
         try {
           await this.loadGltfModels()
         } catch (error) {
-          this.$message.error('GLB 模型加载失败',error)
+          this.$message.error('GLB 模型加载失败', error)
           this.$emit('error', { type: 'gltf', error })
         }
       }
@@ -116,21 +116,23 @@ export default defineComponent({
       }
 
       // 材质配置器复用（避免循环内重复构建 ID 映射）
-      const matCfg = new MaterialConfigurator(renderer)
+
+      const matCfg = this.materialConfigUrl ? new MaterialConfigurator(renderer) : null
 
       for (const url of this.gltfUrls) {
         try {
           const model = await loader.loadGltf(url, { geo: geoInfo })
 
-          const { hdrMeta, appliedCount } = await matCfg.applyFromUrl(
-            this.materialConfigUrl,
-            model,
-            'test',
-          )
-          console.log(`[材质配置] ${url} 已应用 ${appliedCount} 个网格材质`, hdrMeta ? `| HDR: envInt=${hdrMeta.envInt}, bgInt=${hdrMeta.bgInt}, exposure=${hdrMeta.exposure}` : '')
+          if (matCfg) {
+            await matCfg.applyFromUrl(
+              this.materialConfigUrl,
+              model,
+            )
+          }
+          console.log(`已加载模型: ${url}`)
           this.$emit('model-loaded', { url })
         } catch (error) {
-          this.$message.error(`模型加载失败: ${url}`,error)
+          this.$message.error(`模型加载失败: ${url}`, error)
           this.$emit('error', { type: 'gltf', error, url })
         }
       }

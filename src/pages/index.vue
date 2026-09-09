@@ -1,5 +1,7 @@
 <template>
-    <InsBimPlusViewer ref="bimViewer" :tileset-urls="tilesetUrls" :gltf-urls="gltfUrls" @ready="onReady"
+    <InsBimPlusViewer ref="bimViewer" :tileset-urls="tilesetUrls" :gltf-urls="gltfUrls" 
+        :material-config-url="materialConfig" 
+        @ready="onReady"
         @gltf-pick="onPartClick" @model-loaded="onModelLoaded" @error="onError" />
         <button @click="handleSceneEvent">点击我</button>
 </template>
@@ -13,6 +15,7 @@ export default {
         return {
             tilesetUrls: ['http://127.0.0.1:3000/data/3dtiles/rm/tileset.json'],
             gltfUrls: ['http://127.0.0.1:3000/data/gltf/rm/RM_.glb'],
+            materialConfig: './config/material-config.json',
             controller: null,
         }
     },
