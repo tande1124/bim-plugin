@@ -16,6 +16,29 @@ const GRADIENT_COLORS = [
 /** 默认 HDR 路径 */
 const DEFAULT_HDR_PATH = './assets/studio.exr'
 
+/** 默认环境配置（无外部文件时使用） */
+const DEFAULT_CONFIG = Object.freeze({
+  envMapEnabled: false,
+  bloom: { enabled: false, strength: 0.1, radius: 0, threshold: 0 },
+  dirLight: {
+    intensity: 1,
+    yaw: 45,
+    pitch: 50,
+    color: '#ffffff',
+    showPosHelper: false,
+    showDirHelper: false,
+    shadow: {
+      enabled: true,
+      resolution: 4096,
+      range: 62,
+      offsetX: 0,
+      offsetY: 0,
+      bias: -0.001,
+    },
+  },
+  envLight: { intensity: 1, bgIntensity: 1.5, exposure: 1 },
+})
+
 // ========== 环境管理器 ==========
 
 /**
@@ -27,7 +50,7 @@ const DEFAULT_HDR_PATH = './assets/studio.exr'
  * 用法：
  * ```js
  * const env = new EnvironmentManager(scene, renderer)
- * await env.applyFromUrl('./config/env-config.json')
+ * await env.applyFromUrl()
  * ```
  */
 export class EnvironmentManager {
@@ -64,14 +87,30 @@ export class EnvironmentManager {
    * @param {string} url
    */
   async applyFromUrl(url) {
-    const cfg = await this.loadConfig(url)
+    let cfg = DEFAULT_CONFIG
+    if (url) {
+      try {
+        cfg = await this.loadConfig(url)
+      } catch (e) {
+        console.warn('环境配置加载失败，使用默认参数。', e)
+      }
+    }
+
     this.config = cfg
 
-    // HDR 环境贴图（始终加载，显隐由 envMapEnabled / 强度控制）
-    const hdrPath = cfg.envLight.hdrPath ?? DEFAULT_HDR_PATH
-    await this.loadHdrEnvironment(hdrPath)
+    // url 有值时加载 HDR 环境贴图
+    if (url) {
+      const hdrPath = cfg.envLight.hdrPath ?? DEFAULT_HDR_PATH
+      await this.loadHdrEnvironment(hdrPath)
+    }
 
     this.applyAllParams()
+
+    // url 为空时背景透明，覆盖 applyAllParams 的背景设置
+    if (!url) {
+      this.scene.background = null
+      this.scene.environment = null
+    }
   }
 
   /**

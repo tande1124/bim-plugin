@@ -196,7 +196,7 @@ export class TilesViewerController {
   // ========== 公共方法 ==========
 
   /** 挂载 canvas 到容器，构建场景环境（天空+光照），启动渲染循环 */
-  async mount(container) {
+  async mount(container, envConfigUrl) {
     this.container = container
     this.container.innerHTML = ''
     this.container.appendChild(this.renderer.domElement)
@@ -210,7 +210,7 @@ export class TilesViewerController {
     this.handleResize()
 
     // 先构建场景环境（天空、光照），避免黑屏
-    await this.applyEnvConfig()
+    await this.applyEnvConfig(envConfigUrl)
 
     // 环境就绪，画布淡入
     this.renderer.domElement.style.opacity = '1'
@@ -326,10 +326,10 @@ export class TilesViewerController {
 
   // ========== 环境配置 ==========
 
-  /** 加载 env-config.json 并应用全部环境配置 */
-  async applyEnvConfig() {
+  /** 加载环境配置 */
+  async applyEnvConfig(url) {
     try {
-      await this.environment.applyFromUrl('./config/env-config.json')
+      await this.environment.applyFromUrl(url)
     } catch (e) {
       console.warn('[loadScene] 环境配置加载失败，使用默认参数。', e)
     }

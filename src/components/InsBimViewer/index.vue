@@ -1,6 +1,6 @@
 <template>
   <div class="viewer-panel">
-    <div ref="viewerRoot" class="viewer-canvas"></div>
+    <div ref="viewerRoot" class="threejs-viewer-canvas"></div>
     <!-- 相机参数弹窗 -->
     <CameraInfoDialog :controller="controller" />
   </div>
@@ -28,8 +28,13 @@ export default defineComponent({
       default: () => [],
       validator: (v) => v.every((u) => typeof u === 'string'),
     },
+    /** 环境配置文件 */
+    envConfig: {
+      type: String,
+      default: '',
+    },
     /** 材质配置文件路径 */
-    materialConfigUrl: {
+    materialConfig: {
       type: String,
       default: '',
     },
@@ -63,7 +68,7 @@ export default defineComponent({
           },
         }),
       )
-      await this.controller.mount(viewerRoot)
+      await this.controller.mount(viewerRoot, this.envConfig || undefined)
       this.$emit('ready', this.controller)
 
       // 加载 3D Tiles 地形（无数据源或加载失败时跳过，不影响 GLB 加载）
@@ -117,7 +122,7 @@ export default defineComponent({
 
       // 材质配置器复用（避免循环内重复构建 ID 映射）
 
-      const matCfg = this.materialConfigUrl ? new MaterialConfigurator(renderer) : null
+      const matCfg = this.materialConfig ? new MaterialConfigurator(renderer) : null
 
       for (const url of this.gltfUrls) {
         try {
@@ -125,7 +130,7 @@ export default defineComponent({
 
           if (matCfg) {
             await matCfg.applyFromUrl(
-              this.materialConfigUrl,
+              this.materialConfig,
               model,
             )
           }
@@ -192,9 +197,9 @@ export default defineComponent({
 })
 </script>
 
-<style scoped>
+<style >
 .viewer-panel,
-.viewer-panel .viewer-canvas {
+.viewer-panel .threejs-viewer-canvas {
   width: 100%;
   height: 100%;
   margin: 0;
