@@ -1,10 +1,10 @@
 import * as THREE from 'three'
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js'
-import { disposeObject3D } from '../utils/three-dispose'
+import { disposeObject3D } from '../../utils/three-dispose'
 import { EnvironmentManager } from './EnvironmentManager'
 import { CameraManager } from './CameraManager'
-import { GltfModelLoader } from './GltfModelLoader'
-import { TileModelLoader } from './TileModelLoader'
+import { GltfModelLoader } from '../loaders/GltfModelLoader'
+import { TileModelLoader } from '../loaders/TileModelLoader'
 
 /**
  * BIM 查看器控制器。
