@@ -1,8 +1,8 @@
 import * as THREE from 'three'
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js'
-import { disposeObject3D } from './common/three-dispose'
-import { EnvironmentManager } from './common/environment'
-import { CameraManager } from './common/camera'
+import { disposeObject3D } from '../utils/three-dispose'
+import { EnvironmentManager } from './EnvironmentManager'
+import { CameraManager } from './CameraManager'
 import { GltfModelLoader } from './GltfModelLoader'
 import { TileModelLoader } from './TileModelLoader'
 

@@ -8,8 +8,8 @@
 
 <script>
 import { defineComponent, markRaw } from 'vue'
-import { BimViewerController } from '../../utils/BimViewerController'
-import { MaterialConfigurator } from '../../utils/common/material'
+import { BimViewerController } from '../../core/BimViewerController'
+import { MaterialConfigurator } from '../../core/MaterialConfigurator'
 import CameraInfoDialog from '../common/CameraInfoDialog.vue'
 
 export default defineComponent({
