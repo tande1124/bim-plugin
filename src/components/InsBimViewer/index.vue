@@ -8,7 +8,7 @@
 
 <script>
 import { defineComponent, markRaw } from 'vue'
-import { TilesViewerController } from '../../utils/TilesViewerController'
+import { BimViewerController } from '../../utils/BimViewerController'
 import { MaterialConfigurator } from '../../utils/common/material'
 import CameraInfoDialog from '../common/CameraInfoDialog.vue'
 
@@ -61,7 +61,7 @@ export default defineComponent({
       }
 
       this.controller = markRaw(
-        new TilesViewerController({
+        new BimViewerController({
           onGltfPick: (info) => {
             console.log('Gltf 模型点击事件', info)
             this.$emit('gltf-pick', info)

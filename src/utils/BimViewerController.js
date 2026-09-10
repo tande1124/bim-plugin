@@ -1,69 +1,18 @@
 import * as THREE from 'three'
-import { TilesRenderer } from '3d-tiles-renderer'
-import { GLTFExtensionsPlugin, ReorientationPlugin } from '3d-tiles-renderer/three/plugins'
-import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js'
 import { disposeObject3D } from './common/three-dispose'
 import { EnvironmentManager } from './common/environment'
 import { CameraManager } from './common/camera'
 import { GltfModelLoader } from './GltfModelLoader'
-
-// ========== KTX2 压缩贴图支持 ==========
-
-/**
- * Basis Universal（KTX2）转码器资源路径。
- *
- * three 的 KTX2Loader 需要 basis_transcoder.{js,wasm}，这里从
- * node_modules/three/examples/jsm/libs/basis 拷贝到 public/libs/basis
- * 后在运行时按 URL 加载，避免打包器改写模块内相对路径。
- */
-const KTX2_TRANSCODER_PATH = './libs/basis/'
+import { TileModelLoader } from './TileModelLoader'
 
 /**
- * GLTF loader 插件：补齐 cesiumlab（osgb2tiles 等工具）3D Tiles 的贴图解码。
- *
- * 这类 b3dm 内嵌的 glTF 把压缩贴图写成 image/ktx2 图片并被 texture.source 直接引用，
- * 却不带 KHR_texture_basisu 扩展；three 的 GLTFLoader 默认把这类图片当作普通图片解码，
- * 解码失败后贴图为 null，模型就会退化成无贴图的“白膜”。
- *
- * 该插件在 GLTFLoader 解析 texture 依赖时被优先调用，凡是图片为 image/ktx2 的贴图
- * 一律交给 KTX2Loader 解码（与 KHR_texture_basisu 官方路径走同一入口 loadTextureImage），
- * 其余普通贴图返回 null 走 three 默认逻辑，不影响 JPEG/PNG 数据源。
- */
-class RawKtx2TexturePlugin {
-  constructor(parser, ktx2Loader) {
-    this.parser = parser
-    this.ktx2Loader = ktx2Loader
-    this.name = 'RawKtx2TexturePlugin'
-  }
-
-  loadTexture(textureIndex) {
-    const json = this.parser.json
-    const textureDef = json.textures?.[textureIndex]
-    const sourceIndex = textureDef?.source
-    if (sourceIndex === undefined || sourceIndex === null) return null
-
-    const imageDef = json.images?.[sourceIndex]
-    if (!imageDef) return null
-
-    const isKtx2 =
-      imageDef.mimeType === 'image/ktx2' ||
-      (typeof imageDef.uri === 'string' && /\.ktx2($|\?)/i.test(imageDef.uri))
-    if (!isKtx2) return null
-
-    return this.parser.loadTextureImage(textureIndex, sourceIndex, this.ktx2Loader)
-  }
-}
-
-// ========== 控制器 ==========
-
-/**
- * 3D Tiles 查看器控制器。
+ * BIM 查看器控制器。
  *
  * 统一管理场景环境（天空/光照）、3D Tiles 瓦片集加载、相机/飞行/聚焦、
  * 双相机渲染循环、视口自适应和生命周期。
  */
-export class TilesViewerController {
+export class BimViewerController {
   // ---- Three.js 核心对象 ----
   scene = new THREE.Scene()
   renderer = new THREE.WebGLRenderer({
@@ -71,7 +20,6 @@ export class TilesViewerController {
     alpha: true,
     powerPreference: 'high-performance',
   })
-  tilesetRoot = new THREE.Group()
   gltfModelLoader
   resizeObserver = new ResizeObserver(() => this.handleResize())
 
@@ -86,10 +34,8 @@ export class TilesViewerController {
   // ---- 环境管理 ----
   environment
 
-  // ---- 3D Tiles 状态 ----
-  tilesRenderers = []
-  tilesetSource = null
-  tilesetReady = false
+  // ---- 3D Tiles 加载管理器 ----
+  tileModelLoader
 
   // ---- 双相机透视：Layer 0 外壳（3D Tiles）/ Layer 1 内部（GLB） ----
   camInner = new THREE.PerspectiveCamera(45, 1, 1, 1e7)
@@ -113,30 +59,58 @@ export class TilesViewerController {
     // 环境管理器
     this.environment = new EnvironmentManager(this.scene, this.renderer)
 
-    this.tilesetRoot.name = 'tileset-root'
-    this.scene.add(this.tilesetRoot)
-
     // 相机管理器：统一管理相机、轨道控制、飞行、聚焦
     this.cameraManager = new CameraManager(this.renderer.domElement)
+
+    // 3D Tiles 加载管理器
+    this.tileModelLoader = new TileModelLoader({
+      scene: this.scene,
+      renderer: this.renderer,
+      getCamera: () => this.cameraManager.camera,
+      onTilesetLoaded: (radius, isFirst) => {
+        // 更新场景范围
+        if (radius > 0) {
+          this.sceneBounds.setFromCenterAndSize(
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(radius * 2, radius * 2, radius * 2),
+          )
+          const cam = this.cameraManager.camera
+          cam.near = Math.max(radius * 0.0001, 0.01)
+          cam.far = radius * 10
+          cam.updateProjectionMatrix()
+          this.cameraManager.controls.minDistance = radius * 0.01
+          this.cameraManager.controls.maxDistance = radius * 3
+          this.cameraManager.controls.update()
+        }
+        // 只在首次 tileset 加载完成时自动定位相机
+        if (!isFirst) return
+        const cameraCfg = window.BizConfig?.glbConfig?.camera
+        if (cameraCfg) {
+          this.applyCameraConfig(cameraCfg)
+        } else if (!this.cameraManager.isViewSettled() && !this.sceneBounds.isEmpty()) {
+          const box = new THREE.Box3().copy(this.sceneBounds)
+          const gltfBox = new THREE.Box3().setFromObject(this.gltfModelLoader.root)
+          if (!gltfBox.isEmpty()) box.union(gltfBox)
+          this.cameraManager.fitToBox(box)
+        }
+      },
+      onTileError: (e) => {
+        console.warn('[BimViewerController] 瓦片加载错误:', e)
+      },
+    })
 
     // GLTF/GLB 模型加载器：维护独立的 gltf-root 容器组
     this.gltfModelLoader = new GltfModelLoader({
       scene: this.scene,
       renderer: this.renderer,
-      getEcefToSceneTransform: () => {
-        const first = this.tilesRenderers[0]
-        if (!first) return null
-        const group = first.group
-        group.updateMatrixWorld(true)
-        return group.matrixWorld.clone()
-      },
-      whenTerrainReady: () => this.whenTerrainReady(),
+      getEcefToSceneTransform: () => this.tileModelLoader.getFirstTransform(),
+      whenTerrainReady: () => this.tileModelLoader.whenReady(),
       onPick: (info, position) => {
         callbacks.onGltfPick?.(info, position)
       },
       onRequestFitCamera: () => {
         // 无 3D Tiles 时，GLB 加载完自动聚焦到模型上
-        if (this.tilesetReady) return
+        if (this.tileModelLoader.ready) return
         const box = new THREE.Box3().setFromObject(this.gltfModelLoader.root)
         if (!box.isEmpty()) {
           this.cameraManager.fitToBox(box)
@@ -171,14 +145,6 @@ export class TilesViewerController {
     this.renderer.toneMapping = THREE.NoToneMapping
     this.renderer.toneMappingExposure = 1
     this.renderer.autoClear = false // 双透模式手动控制清屏
-
-    // KTX2（Basis Universal）纹理解码器：cesiumlab 等产出的 3D Tiles
-    // b3dm 贴图为 image/ktx2，无解码器时贴图加载失败、模型呈白膜。
-    // 共享给所有瓦片渲染器，由 clearTileset/destroy 管理生命周期。
-    this.ktx2Loader = new KTX2Loader()
-      .setTranscoderPath(KTX2_TRANSCODER_PATH)
-      .setWorkerLimit(2)
-      .detectSupport(this.renderer)
 
     // 画布初始透明，等环境配置就绪后淡入，避免黑屏
     this.renderer.domElement.style.opacity = '0'
@@ -223,96 +189,8 @@ export class TilesViewerController {
     if (!this.container) {
       throw new Error('Three.js 容器尚未挂载。')
     }
-
     this.sceneBounds.makeEmpty()
-    this.clearTileset()
-
-    // ---- 加载 3D Tiles 作为外壳（Layer 0）----
-    const validSources = sources.filter((item) => item.url)
-    if (validSources.length === 0) {
-      throw new Error('未提供可加载的 3DTiles 数据源。')
-    }
-
-    this.tilesetSource = validSources[0]
-    let isFirstTileSet = true
-    const boundingSphere = new THREE.Sphere()
-
-    for (const source of validSources) {
-      const tilesRenderer = new TilesRenderer(source.url)
-      tilesRenderer.setCamera(this.cameraManager.camera)
-      tilesRenderer.setResolutionFromRenderer(this.cameraManager.camera, this.renderer)
-
-      // 坐标 recenter
-      tilesRenderer.registerPlugin(new ReorientationPlugin({ up: '+z', recenter: true }))
-
-      // KTX2 压缩贴图解码：把带 KTX2Loader 的 GLTF loader 挂到瓦片渲染器上，
-      // 并注册自定义插件解码 cesiumlab 内嵌 image/ktx2（无 basisu 扩展）的贴图
-      tilesRenderer.registerPlugin(
-        new GLTFExtensionsPlugin({
-          metadata: false,
-          rtc: false,
-          ktxLoader: this.ktx2Loader,
-          autoDispose: false,
-          plugins: [(parser) => new RawKtx2TexturePlugin(parser, this.ktx2Loader)],
-        }),
-      )
-
-      // 瓦片网格分配到 Layer 0（外壳层）并启用双面渲染
-      tilesRenderer.addEventListener('load-model', ({ scene }) => {
-        scene.traverse((obj) => {
-          if (obj.isMesh) {
-            obj.layers.set(0)
-            if (obj.material) obj.material.side = THREE.DoubleSide
-          }
-        })
-      })
-
-      // 适配大场景 + 错误处理
-      tilesRenderer.addEventListener('load-tile-set', () => {
-        if (tilesRenderer.getBoundingSphere(boundingSphere)) {
-          const radius = boundingSphere.radius
-          const center = new THREE.Vector3(0, 0, 0)
-          this.sceneBounds.setFromCenterAndSize(
-            center,
-            new THREE.Vector3(radius * 2, radius * 2, radius * 2),
-          )
-
-          const cam = this.cameraManager.camera
-          cam.near = Math.max(radius * 0.0001, 0.01)
-          cam.far = radius * 10
-          cam.updateProjectionMatrix()
-
-          this.cameraManager.controls.minDistance = radius * 0.01
-          this.cameraManager.controls.maxDistance = radius * 3
-          this.cameraManager.controls.update()
-        }
-
-        this.tilesetReady = true
-
-        // 只在首次 tileset 加载完成时自动定位相机
-        if (!isFirstTileSet) return
-        isFirstTileSet = false
-
-        // 优先使用配置文件中的相机参数，未配置则自动聚焦到场景包围盒
-        const cameraCfg = window.BizConfig?.glbConfig?.camera
-        if (cameraCfg) {
-          this.applyCameraConfig(cameraCfg)
-        } else if (!this.cameraManager.isViewSettled() && !this.sceneBounds.isEmpty()) {
-          const box = new THREE.Box3().copy(this.sceneBounds)
-          const gltfBox = new THREE.Box3().setFromObject(this.gltfModelLoader.root)
-          if (!gltfBox.isEmpty()) box.union(gltfBox)
-          this.cameraManager.fitToBox(box)
-        }
-      })
-
-      tilesRenderer.addEventListener('load-tile-error', (e) => {
-        console.warn('[TilesViewerController] 瓦片加载错误:', e)
-      })
-
-      this.tilesetRoot.add(tilesRenderer.group)
-      tilesRenderer.group.userData.sourceId = source.id
-      this.tilesRenderers.push(tilesRenderer)
-    }
+    await this.tileModelLoader.loadScene(sources)
   }
 
   /** 获取 GLTF 模型加载器实例 */
@@ -326,12 +204,7 @@ export class TilesViewerController {
    * @param {boolean} visible - 是否可见
    */
   setLayerVisible(sourceId, visible) {
-    for (const tr of this.tilesRenderers) {
-      if (tr.group.userData.sourceId === sourceId) {
-        tr.group.visible = visible
-        break
-      }
-    }
+    this.tileModelLoader.setLayerVisible(sourceId, visible)
   }
 
   /** 清除 GLB 部件高亮 */
@@ -386,12 +259,10 @@ export class TilesViewerController {
     this.resizeObserver.disconnect()
     this.gltfModelLoader.disablePicking()
     this.clearAnnotations()
-    this.clearTileset()
+    this.tileModelLoader.dispose()
     this.cameraManager.dispose()
     this.environment.dispose()
     this.rtInner.dispose()
-    this.ktx2Loader?.dispose()
-    this.ktx2Loader = null
 
     disposeObject3D(this.scene)
     this.scene.clear()
@@ -415,9 +286,7 @@ export class TilesViewerController {
 
       const cam = this.cameraManager.camera
       cam.updateMatrixWorld()
-      for (const tr of this.tilesRenderers) {
-        if (tr.group.visible) tr.update()
-      }
+      this.tileModelLoader.update()
 
       if (this.dualPass) {
         // ---- 双相机透视：三步合成 ----
@@ -460,50 +329,6 @@ export class TilesViewerController {
     renderFrame()
   }
 
-  // ========== 3D Tiles 管理 ==========
-
-  /** 释放并移除所有瓦片渲染器 */
-  clearTileset() {
-    for (const tr of this.tilesRenderers) {
-      tr.deleteCamera(this.cameraManager.camera)
-      this.tilesetRoot.remove(tr.group)
-      tr.dispose()
-    }
-    this.tilesRenderers = []
-    this.tilesetSource = null
-    this.tilesetReady = false
-  }
-
-  // ========== 地形状态 ==========
-
-  /**
-   * 等待地形瓦片集根节点就绪。
-   * 每 100ms 轮询检测，默认 30s 超时。
-   */
-  whenTerrainReady(timeout = 30000) {
-    if (this.tilesRenderers.length === 0) {
-      console.warn('[loadGltf] 未加载地形瓦片集，无法进行地理配准。')
-      return Promise.resolve()
-    }
-
-    const isReady = () =>
-      this.tilesetReady || this.tilesRenderers.some((tr) => Boolean(tr.root))
-    if (isReady()) return Promise.resolve()
-
-    return new Promise((resolve) => {
-      const timerId = window.setInterval(() => {
-        if (isReady()) {
-          window.clearInterval(timerId)
-          resolve()
-        }
-      }, 100)
-      window.setTimeout(() => {
-        window.clearInterval(timerId)
-        resolve()
-      }, timeout)
-    })
-  }
-
   // ========== 视口自适应 ==========
 
   handleResize() {
@@ -518,9 +343,7 @@ export class TilesViewerController {
     this.css2dRenderer.setSize(width, height)
 
     // 窗口变化时重新同步瓦片 SSE 分辨率
-    for (const tr of this.tilesRenderers) {
-      tr.setResolutionFromRenderer(this.cameraManager.camera, this.renderer)
-    }
+    this.tileModelLoader.resize(this.cameraManager.camera, this.renderer)
 
     // 双透模式下同步内相机与渲染目标尺寸
     if (this.dualPass) {

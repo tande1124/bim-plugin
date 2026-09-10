@@ -34,7 +34,7 @@ import { defineComponent } from 'vue'
 export default defineComponent({
   name: 'CameraInfoDialog',
   props: {
-    /** TilesViewerController 实例 */
+    /** BimViewerController 实例 */
     controller: {
       type: Object,
       default: null,
