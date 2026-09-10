@@ -106,8 +106,8 @@ export class EnvironmentManager {
 
     this.applyAllParams()
 
-    // url 为空时背景透明，覆盖 applyAllParams 的背景设置
-    if (!url) {
+    // 当没有环境贴图时，背景透明，覆盖 applyAllParams 的背景设置
+    if (!cfg.envMapEnabled) {
       this.scene.background = null
       this.scene.environment = null
     }
@@ -189,6 +189,19 @@ export class EnvironmentManager {
     if (this.gradientBgTexture) {
       this.gradientBgTexture.dispose()
       this.gradientBgTexture = null
+    }
+  }
+
+  /** 控制环境贴图是否启用，关闭时背景透明 */
+  controlEnvMapEnabled(enabled) {
+    if (!this.config) return
+    this.config.envMapEnabled = enabled
+
+    if (!enabled) {
+      this.scene.background = null
+      this.scene.environment = null
+    } else {
+      this.applyAllParams()
     }
   }
 

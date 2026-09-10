@@ -16,17 +16,17 @@ export default defineComponent({
   name: 'ThreeTilesViewer',
   components: { CameraInfoDialog },
   props: {
-    /** 3D Tiles 数据源 URL 列表 */
-    tilesetUrls: {
+    /** 3D Tiles 数据源列表 [{id, url}] */
+    tilesetSources: {
       type: Array,
       default: () => [],
-      validator: (v) => v.every((u) => typeof u === 'string'),
+      validator: (v) => v.every((s) => s && typeof s.id === 'string' && typeof s.url === 'string'),
     },
-    /** GLTF 模型 URL 列表 */
-    gltfUrls: {
+    /** GLTF 数据源列表 [{id, url}] */
+    gltfSources: {
       type: Array,
       default: () => [],
-      validator: (v) => v.every((u) => typeof u === 'string'),
+      validator: (v) => v.every((s) => s && typeof s.id === 'string' && typeof s.url === 'string'),
     },
     /** 环境配置文件 */
     envConfig: {
@@ -72,7 +72,7 @@ export default defineComponent({
       this.$emit('ready', this.controller)
 
       // 加载 3D Tiles 地形（无数据源或加载失败时跳过，不影响 GLB 加载）
-      if (this.tilesetUrls.length > 0) {
+      if (this.tilesetSources.length > 0) {
         try {
           await this.loadTilesets()
         } catch (error) {
@@ -82,7 +82,7 @@ export default defineComponent({
       }
 
       // 加载 GLB 模型
-      if (this.gltfUrls.length > 0) {
+      if (this.gltfSources.length > 0) {
         try {
           await this.loadGltfModels()
         } catch (error) {
@@ -98,19 +98,19 @@ export default defineComponent({
       }
     },
 
-    /** 将 tilesetUrls props 转换为 sources 并加载 3D Tiles 场景 */
+    /** 加载 tilesetSources 中的 3D Tiles 场景 */
     async loadTilesets() {
       if (!this.controller) return
-      const sources = this.tilesetUrls.map((url, i) => ({
-        id: `tileset-${i}`,
-        name: `瓦片集 ${i + 1}`,
+      const sources = this.tilesetSources.map((s) => ({
+        id: s.id,
+        name: s.name || s.id,
         kind: 'terrain',
-        url,
+        url: s.url,
       }))
       await this.controller.loadScene(sources)
     },
 
-    /** 依次加载 gltfUrls 中的 GLTF 模型 */
+    /** 依次加载 gltfSources 中的 GLTF 模型 */
     async loadGltfModels() {
       if (!this.controller) return
       const loader = this.controller.getGltfModelLoader()
@@ -121,12 +121,11 @@ export default defineComponent({
       }
 
       // 材质配置器复用（避免循环内重复构建 ID 映射）
-
       const matCfg = this.materialConfig ? new MaterialConfigurator(renderer) : null
 
-      for (const url of this.gltfUrls) {
+      for (const source of this.gltfSources) {
         try {
-          const model = await loader.loadGltf(url, { geo: geoInfo })
+          const model = await loader.loadGltf(source.url, { geo: geoInfo })
 
           if (matCfg) {
             await matCfg.applyFromUrl(
@@ -134,11 +133,11 @@ export default defineComponent({
               model,
             )
           }
-          console.log(`已加载模型: ${url}`)
-          this.$emit('model-loaded', { url })
+          console.log(`已加载模型: ${source.id} (${source.url})`)
+          this.$emit('model-loaded', { id: source.id, url: source.url })
         } catch (error) {
-          this.$message.error(`模型加载失败: ${url}`, error)
-          this.$emit('error', { type: 'gltf', error, url })
+          this.$message.error(`模型加载失败: ${source.url}`, error)
+          this.$emit('error', { type: 'gltf', error, id: source.id, url: source.url })
         }
       }
     },
@@ -192,7 +191,20 @@ export default defineComponent({
     /** 清除当前高亮 */
     clearHighlight() {
       this.controller?.clearGltfHighlight()
-    }
+    },
+
+    /** 控制环境贴图是否启用 */
+    controlEnvEnabled(enabled) {
+      this.controller?.environment.controlEnvMapEnabled(enabled)
+    },
+    /** 控制3dtiles图层的显隐 */
+    setLayerVisible(sourceId, visible) {
+      this.controller?.setLayerVisible(sourceId, visible)
+    },
+    /** 切换双相机透视渲染模式 */
+    setDualPass(enabled) {
+      this.controller?.setDualPass(enabled)
+    },
   },
 })
 </script>

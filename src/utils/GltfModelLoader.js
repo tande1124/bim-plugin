@@ -158,6 +158,18 @@ export class GltfModelLoader {
   }
 
   /**
+   * 切换 GLB 网格所在图层，用于双相机/单相机模式切换。
+   * @param {number} layer - 目标图层（0=单层模式，1=双透模式）
+   */
+  setLayer(layer) {
+    this.currentLayer = layer
+    this.root.traverse((obj) => {
+      if (obj.isMesh) obj.layers.set(layer)
+    })
+    this.outlineGroup.layers.set(layer)
+  }
+
+  /**
    * 用归一化设备坐标（NDC，x/y ∈ -1 ~ 1，原点在画布中心）对已加载的 GLB
    * 模型做射线拾取，未命中任何部件时返回 null。
    * @param {THREE.Camera} camera

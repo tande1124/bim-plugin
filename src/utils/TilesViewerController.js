@@ -310,6 +310,7 @@ export class TilesViewerController {
       })
 
       this.tilesetRoot.add(tilesRenderer.group)
+      tilesRenderer.group.userData.sourceId = source.id
       this.tilesRenderers.push(tilesRenderer)
     }
   }
@@ -319,9 +320,51 @@ export class TilesViewerController {
     return this.gltfModelLoader
   }
 
+  /**
+   * 设置指定瓦片图层的显隐。
+   * @param {string} sourceId - 数据源 ID（如 'tileset-0'）
+   * @param {boolean} visible - 是否可见
+   */
+  setLayerVisible(sourceId, visible) {
+    for (const tr of this.tilesRenderers) {
+      if (tr.group.userData.sourceId === sourceId) {
+        tr.group.visible = visible
+        break
+      }
+    }
+  }
+
   /** 清除 GLB 部件高亮 */
   clearGltfHighlight() {
     this.gltfModelLoader.clearHighlight()
+  }
+
+  /** 获取当前双相机透视模式状态 */
+  getDualPass() {
+    return this.dualPass
+  }
+
+  /**
+   * 切换双相机透视模式。
+   * - ON: GLB 在 Layer 1 由内相机渲染，透明叠加在 3D Tiles 外壳上
+   * - OFF: 所有物体在 Layer 0，单相机单次渲染
+   * @param {boolean} enabled
+   */
+  setDualPass(enabled) {
+    if (this.dualPass === enabled) return
+    this.dualPass = enabled
+
+    if (enabled) {
+      // 切回双透模式
+      this.cameraManager.camera.layers.set(0)
+      this.renderer.autoClear = false
+      this.gltfModelLoader.setLayer(1)
+    } else {
+      // 切到单层模式
+      this.cameraManager.camera.layers.enable(1)
+      this.renderer.autoClear = true
+      this.gltfModelLoader.setLayer(0)
+    }
   }
 
   // ========== 环境配置 ==========
@@ -526,6 +569,7 @@ export class TilesViewerController {
   getPreferredPixelRatio() {
     return THREE.MathUtils.clamp(window.devicePixelRatio || 1, 1, 2)
   }
+
 
   // ========== CSS2D 标注管理 ==========
 

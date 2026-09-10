@@ -1,9 +1,15 @@
 <template>
-    <InsBimPlusViewer ref="bimViewer" :tileset-urls="tilesetUrls" :gltf-urls="gltfUrls" 
+    <InsBimPlusViewer ref="bimViewer" :tileset-sources="tilesetSources" :gltf-sources="gltfSources" 
         :env-config="envConfig"
         :material-config="materialConfig" 
         @ready="onReady"
         @gltf-pick="onPartClick" @model-loaded="onModelLoaded" @error="onError" />
+      <div class="operation-container flex">
+          <el-switch v-model="envShow" active-text="环境" @change="handleSceneEvent"></el-switch>
+          <el-checkbox style="margin-left: 30px;" v-model="tileShow" @change="handleLayerToggle">地形</el-checkbox>
+          <el-checkbox v-model="canansShow" @change="handleDualPassToggle">双透视</el-checkbox>
+      </div>
+
 </template>
 
 <script>
@@ -13,11 +19,21 @@ import PartInfoLabel from './PartInfoLabel.vue'
 export default {
     data() {
         return {
-            tilesetUrls: ['http://127.0.0.1:3000/data/3dtiles/rm/tileset.json'],
-            gltfUrls: ['http://127.0.0.1:3000/data/gltf/rm/RM_.glb'],
+            tilesetSources: [{
+                id: 'rm-tileset',
+                url: 'http://127.0.0.1:3000/data/3dtiles/rm/tileset.json',
+            }],
+            gltfSources: [{
+                id: 'rm-glb',
+                url: 'http://127.0.0.1:3000/data/gltf/rm/RM_.glb',
+            }],
             materialConfig: './config/material-config.json',
             envConfig: './config/env-config.json',
             controller: null,
+            envShow: true,
+
+            tileShow: true,
+            canansShow: true,
         }
     },
     methods: {
@@ -44,10 +60,22 @@ export default {
                 // this.$refs.bimViewer.setPartMaterial(partName, matKey)
 
                 //  按 name 高亮部件（半透明 + 轮廓线） 
-                this.$refs.bimViewer.highlightPart('围堰工程')
+                // this.$refs.bimViewer.highlightPart('围堰工程')
 
                 // 清除当前高亮
                 // this.$refs.bimViewer.clearHighlight()
+
+                this.$refs.bimViewer.controlEnvEnabled(this.envShow)
+            }
+        },
+        handleLayerToggle() {
+            if (this.$refs.bimViewer) {
+                this.$refs.bimViewer.setLayerVisible('rm-tileset', this.tileShow)
+            }
+        },
+        handleDualPassToggle() {
+            if (this.$refs.bimViewer) {
+                this.$refs.bimViewer.setDualPass(this.canansShow)
             }
         },
     },
