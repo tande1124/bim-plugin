@@ -109,7 +109,6 @@ export class EnvironmentManager {
     // 当没有环境贴图时，背景透明，覆盖 applyAllParams 的背景设置
     if (!cfg.envMapEnabled) {
       this.scene.background = null
-      this.scene.environment = null
     }
   }
 
@@ -199,7 +198,6 @@ export class EnvironmentManager {
 
     if (!enabled) {
       this.scene.background = null
-      this.scene.environment = null
     } else {
       this.applyAllParams()
     }
