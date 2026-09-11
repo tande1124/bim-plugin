@@ -338,8 +338,8 @@ export class LabelRenderer {
 
     // ---- 确定图标模板 ----
     let templateName = fallbackTemplate
-    if (opts.icon && this.templates.has(opts.icon)) {
-      templateName = opts.icon
+    if (opts.template && this.templates.has(opts.template)) {
+      templateName = opts.template
     } else if (item.icon) {
       const fileKey = item.icon.split('/').pop().replace('.glb', '')
       if (this.templates.has(fileKey)) {

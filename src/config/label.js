@@ -14,11 +14,11 @@ export default {
             altitude: 2711.1,                       // 高程（米）
             icon: './assets/icon/label.glb',        // GLB 图标文件路径
             opts: {
-                icon: '标签_C',                     // GLB 中的模板节点名，如 标签_A / 标签_B / 标签_C / 标签_D
+                template: '标签_C',                   // GLB 中的模板节点名，如 标签_A / 标签_B / 标签_C / 标签_D
                 color: '#88ddff',                   // 圆环/涟漪颜色，CSS 颜色值
                 animation: 'bounce',                // 动画类型：bounce(弹跳) / rotate(旋转) / both(两者) / none(无)
                 animEnabled: true,                  // 是否启用动画
-                scale: 50,                          // 整体缩放，BIM 场景较大建议 30-80
+                scale: 100,                          // 整体缩放，BIM 场景较大建议 30-80
                 labelHeight: 0.3,                   // 图标离地高度
                 ripple: true,                       // 是否显示底部涟漪扩散动画
                 showName: true,                     // 是否显示名称牌
