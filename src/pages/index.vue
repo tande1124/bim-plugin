@@ -48,7 +48,10 @@ export default {
             const el = document.createElement('div')
             const app = createApp(PartInfoLabel, { name: info.name, path: info.path })
             app.mount(el)
-            this.controller.addAnnotation(info.worldPosition, el)
+
+            if( this.$refs.bimViewer) {
+                this.$refs.bimViewer.addAnnotation(info.worldPosition, el)
+            }
         },
         onModelLoaded({ url }) {
         },
@@ -56,15 +59,6 @@ export default {
         },
         handleSceneEvent() {
             if (this.$refs.bimViewer) {
-                // 按 name 修改部件材质。
-                // this.$refs.bimViewer.setPartMaterial(partName, matKey)
-
-                //  按 name 高亮部件（半透明 + 轮廓线） 
-                // this.$refs.bimViewer.highlightPart('围堰工程')
-
-                // 清除当前高亮
-                // this.$refs.bimViewer.clearHighlight()
-
                 this.$refs.bimViewer.controlEnvEnabled(this.envShow)
             }
         },

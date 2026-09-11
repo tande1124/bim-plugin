@@ -394,7 +394,7 @@ export class BimViewerController {
   }
 
 
-  // ========== CSS2D 标注管理 ==========
+  // ========== CSS2D 标注管理（HTML 标注） ==========
 
   /**
    * 在 3D 世界坐标处添加一个 HTML 标注。

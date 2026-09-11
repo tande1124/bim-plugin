@@ -193,14 +193,27 @@ export default defineComponent({
       this.controller?.clearGltfHighlight()
     },
 
+    /** 添加html标注（位置，元素） */
+    addAnnotation(position, element) {
+      this.controller?.addAnnotation(position, element)
+    },
+
+    /** 清除所有标注 */
+    clearAnnotations() {
+      this.controller?.clearAnnotations()
+    },
+
+    
     /** 控制环境贴图是否启用 */
     controlEnvEnabled(enabled) {
       this.controller?.environment.controlEnvMapEnabled(enabled)
     },
+
     /** 控制3dtiles图层的显隐 */
     setLayerVisible(sourceId, visible) {
       this.controller?.setLayerVisible(sourceId, visible)
     },
+
     /** 切换双相机透视渲染模式 */
     setDualPass(enabled) {
       this.controller?.setDualPass(enabled)
