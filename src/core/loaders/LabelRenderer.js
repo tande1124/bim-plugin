@@ -206,6 +206,12 @@ export class LabelRenderer {
   loader = new GLTFLoader()
   prevTime = 0
 
+  /** 射线拾取 */
+  raycaster = new THREE.Raycaster()
+  pickCamera = null
+  pickDomElement = null
+  pickPointerStart = new THREE.Vector2()
+
   constructor(deps) {
     this.deps = deps
     this.root.name = 'label-root'
@@ -364,6 +370,8 @@ export class LabelRenderer {
 
     // ---- 容器 ----
     const container = new THREE.Group()
+    container.userData.labelId = item.id
+    container.userData.labelData = { id: item.id, name: item.name, longitude: item.longitude, latitude: item.latitude, altitude: item.altitude }
     container.position.copy(ecef)
     container.scale.set(scale, scale, scale)
     if (opts.rotation) {
@@ -416,21 +424,40 @@ export class LabelRenderer {
 
   // ========== 图层管理 ==========
 
+  /**
+   * 设置图层组可见性。
+   * @param {string} type - 图层组 ID
+   * @param {boolean} visible - 是否可见
+   */
   setGroupVisible(type, visible) {
     const group = this.groups.get(type)
     if (group) group.visible = visible
   }
 
+  /**
+   * 移除图层组。
+   * @param {string|string[]|null} type - 图层组 ID、ID 数组，null 则移除全部
+   */
   removeGroup(type) {
-    const group = this.groups.get(type)
-    if (!group) return
-    this.labels = this.labels.filter((label) => {
-      if (label.parent === group) { disposeObject3D(label); return false }
-      return true
-    })
-    this.root.remove(group)
-    disposeObject3D(group)
-    this.groups.delete(type)
+    const removeOne = (t) => {
+      const group = this.groups.get(t)
+      if (!group) return
+      this.labels = this.labels.filter((label) => {
+        if (label.parent === group) { disposeObject3D(label); return false }
+        return true
+      })
+      this.root.remove(group)
+      disposeObject3D(group)
+      this.groups.delete(t)
+    }
+
+    if (type == null) {
+      const keys = [...this.groups.keys()]
+      for (const key of keys) removeOne(key)
+      return
+    }
+    const types = Array.isArray(type) ? type : [type]
+    for (const t of types) removeOne(t)
   }
 
   // ========== 动画更新 ==========
@@ -475,27 +502,107 @@ export class LabelRenderer {
     }
   }
 
-  // ========== 查询 ==========
+  // ========== 拾取 ==========
 
-  getBoundingBox() {
+  /**
+   * 用归一化设备坐标（NDC）对标签做射线拾取。
+   * @param {THREE.Camera} camera
+   * @param {THREE.Vector2} ndc
+   * @returns {{ id, name, longitude, latitude, altitude, container: THREE.Group } | null}
+   */
+  pick(camera, ndc) {
     if (this.labels.length === 0) return null
-    const box = new THREE.Box3()
-    for (const c of this.labels) box.expandByPoint(c.position)
-    return box
+    this.raycaster.setFromCamera(ndc, camera)
+    // 收集所有标签下的 Mesh
+    const meshes = []
+    for (const c of this.labels) {
+      if (!c.visible) continue
+      c.traverse((obj) => { if (obj.isMesh) meshes.push(obj) })
+    }
+    const hits = this.raycaster.intersectObjects(meshes, false)
+    if (hits.length === 0) return null
+    // 沿命中链向上找到标签容器（带 labelId 的 Group）
+    let node = hits[0].object
+    while (node) {
+      if (node.userData?.labelId !== undefined) {
+        return { ...node.userData.labelData, container: node }
+      }
+      node = node.parent
+    }
+    return null
   }
 
-  getFlyTarget() {
-    const box = this.getBoundingBox()
-    if (!box) return null
+  /**
+   * 启用标签点击拾取。
+   * @param {THREE.Camera} camera
+   * @param {HTMLElement} domElement
+   */
+  enablePicking(camera, domElement) {
+    if (this.pickDomElement === domElement) return
+    this.disablePicking()
+    this.pickCamera = camera
+    this.pickDomElement = domElement
+    domElement.addEventListener('pointerdown', this._handlePointerDown)
+    domElement.addEventListener('click', this._handleClick)
+  }
+
+  /** 停止标签点击拾取 */
+  disablePicking() {
+    if (this.pickDomElement) {
+      this.pickDomElement.removeEventListener('pointerdown', this._handlePointerDown)
+      this.pickDomElement.removeEventListener('click', this._handleClick)
+    }
+    this.pickCamera = null
+    this.pickDomElement = null
+  }
+
+  /** @private */
+  _handlePointerDown = (event) => {
+    this.pickPointerStart.set(event.clientX, event.clientY)
+  }
+
+  /** @private */
+  _handleClick = (event) => {
+    if (!this.pickCamera || !this.pickDomElement) return
+    // 拖拽不触发点击
+    if (Math.hypot(event.clientX - this.pickPointerStart.x, event.clientY - this.pickPointerStart.y) > 5) return
+    const rect = this.pickDomElement.getBoundingClientRect()
+    const ndc = new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    )
+    const info = this.pick(this.pickCamera, ndc)
+    if (info) {
+      this.deps.onLabelClick?.(info)
+    }
+  }
+
+  // ========== 查询 ==========
+
+  /**
+   * 根据标签 ID 查找并飞行定位到对应 3D 标签。
+   * @param {number|string} id - 标签 ID（对应配置中 list 项的 id）
+   * @returns {{ center: THREE.Vector3, distance: number } | null} 飞行目标，未找到返回 null
+   */
+  flyToLabel(id) {
+    const label = this.labels.find((c) => c.userData.labelId === id)
+    if (!label) {
+      console.warn(`[LabelRenderer] 未找到 ID=${id} 的标签`)
+      return null
+    }
+    // 计算标签包围球，得到合适的观察距离
+    label.updateWorldMatrix(true, true)
+    const box = new THREE.Box3().setFromObject(label)
     const center = box.getCenter(new THREE.Vector3())
     const size = box.getSize(new THREE.Vector3())
-    const maxDim = Math.max(size.x, size.y, size.z, 100)
+    const maxDim = Math.max(size.x, size.y, size.z, 50)
     return { center, distance: maxDim * 2 }
   }
 
   // ========== 生命周期 ==========
 
   dispose() {
+    this.disablePicking()
     for (const [, group] of this.groups) disposeObject3D(group)
     this.groups.clear()
     this.labels = []

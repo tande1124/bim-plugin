@@ -61,6 +61,7 @@ export class BimViewerController {
   /**
    * @param {Object} [callbacks={}]
    * @param {Function} [callbacks.onGltfPick] - 点击 GLB 模型部件时的回调
+   * @param {Function} [callbacks.onLabelClick] - 点击 3D 标签时的回调
    */
   constructor(callbacks = {}) {
     // 环境管理器
@@ -134,6 +135,9 @@ export class BimViewerController {
       scene: this.scene,
       getEcefToSceneTransform: () => this.tileModelLoader.getFirstTransform(),
       whenTerrainReady: () => this.tileModelLoader.whenReady(),
+      onLabelClick: (info) => {
+        callbacks.onLabelClick?.(info)
+      },
     })
 
     // ---- 双相机透视基础设施 ----
@@ -153,6 +157,8 @@ export class BimViewerController {
 
     // 启用 GLB 部件点击拾取
     this.gltfModelLoader.enablePicking(this.cameraManager.camera, this.renderer.domElement)
+    // 启用 3D 标签点击拾取
+    this.labelRenderer.enablePicking(this.cameraManager.camera, this.renderer.domElement)
 
     this.renderer.setPixelRatio(this.getPreferredPixelRatio())
     this.renderer.outputColorSpace = THREE.SRGBColorSpace

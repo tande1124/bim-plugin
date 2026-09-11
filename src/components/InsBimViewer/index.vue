@@ -39,7 +39,7 @@ export default defineComponent({
       default: '',
     },
   },
-  emits: ['ready', 'gltf-pick', 'model-loaded', 'error'],
+  emits: ['ready', 'gltf-pick', 'label-click', 'model-loaded', 'error'],
   data() {
     return {
       controller: null,
@@ -65,6 +65,10 @@ export default defineComponent({
           onGltfPick: (info) => {
             console.log('Gltf 模型点击事件', info)
             this.$emit('gltf-pick', info)
+          },
+          onLabelClick: (info) => {
+            console.log('3D 标签点击事件', info)
+            this.$emit('label-click', info)
           },
         }),
       )
@@ -228,12 +232,6 @@ export default defineComponent({
       const loader = this.controller?.getLabelRenderer()
       if (!loader) return
       await loader.renderFromConfig(config)
-
-      // 创建完成后飞行到标签位置
-      const target = loader.getFlyTarget()
-      if (target && this.controller) {
-        this.controller.cameraManager.flyTo(target.center, target.distance / 12, 1200)
-      }
     },
 
     /**
@@ -243,6 +241,20 @@ export default defineComponent({
      */
     setLabelVisible(type, visible) {
       this.controller?.getLabelRenderer()?.setGroupVisible(type, visible)
+    },
+
+    /**
+     * 根据标签 ID 飞行定位到对应 3D 标签。
+     * @param {number|string} id - 标签 ID
+     * @param {number} [duration=1200] - 飞行动画时长（毫秒）
+     */
+    flyToLabel(id, duration = 1200) {
+      const loader = this.controller?.getLabelRenderer()
+      if (!loader) return
+      const target = loader.flyToLabel(id)
+      if (target && this.controller) {
+        this.controller.cameraManager.flyTo(target.center, target.distance / 12, duration)
+      }
     },
   },
 })
