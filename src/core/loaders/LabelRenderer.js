@@ -308,17 +308,14 @@ export class LabelRenderer {
     }
 
     // 等待地形就绪
-    console.log('[LabelRenderer] 等待地形就绪...')
     await this.deps.whenTerrainReady?.()
     const ecefToScene = this.deps.getEcefToSceneTransform?.()
     if (!ecefToScene) {
       console.warn('[LabelRenderer] ECEF → 场景变换不可用，无法定位标签。')
       return
     }
-    console.log('[LabelRenderer] ecefToScene 矩阵已获取')
 
     const fallbackTemplate = this.getFirstTemplateName()
-    console.log(`[LabelRenderer] 共 ${list.length} 个标签，兜底模板: "${fallbackTemplate}"`)
 
     for (const item of list) {
       this.createLabel(item, ecefToScene, group, fallbackTemplate)
@@ -340,14 +337,10 @@ export class LabelRenderer {
     const opts = { ...DEFAULT_OPTS, ...item.opts }
 
     // ---- 确定图标模板 ----
-    // opts.icon: 模板节点名称（如 "标签_A"），指定使用 GLB 中的哪个节点
-    // item.icon: GLB 文件 URL，已在 renderLabels 中加载
     let templateName = fallbackTemplate
     if (opts.icon && this.templates.has(opts.icon)) {
-      // 直接指定了模板名称
       templateName = opts.icon
     } else if (item.icon) {
-      // 尝试用文件名作为 key（当 GLB 无命名节点时的兜底 key）
       const fileKey = item.icon.split('/').pop().replace('.glb', '')
       if (this.templates.has(fileKey)) {
         templateName = fileKey
@@ -381,7 +374,6 @@ export class LabelRenderer {
     const iconClone = template.clone(true)
     iconClone.rotation.x = -Math.PI / 2
     iconClone.position.y = labelHeight
-    iconClone.userData.isLabel = true
     container.add(iconClone)
 
     // ---- 底部圆环 ----
@@ -389,34 +381,34 @@ export class LabelRenderer {
     container.add(ring)
 
     // ---- 涟漪 ----
+    let rippleGroup = null
     if (opts.ripple) {
-      const ripples = createRipples(color)
-      container.add(ripples)
+      rippleGroup = createRipples(color)
+      container.add(rippleGroup)
     }
 
     // ---- 名称牌 ----
     if (opts.showName && item.name) {
       const nameTag = createNameTag(item.name, color, opts.nameStyle)
-      nameTag.userData.nameTagHeight = opts.nameTagHeight
-      nameTag.userData.nameTagSize = opts.nameTagSize
       nameTag.position.set(0, labelHeight + opts.nameTagHeight, 0)
-      const tagScale = opts.nameTagSize
-      nameTag.scale.multiplyScalar(tagScale)
+      nameTag.scale.multiplyScalar(opts.nameTagSize)
       if (opts.nameTagRot) {
         nameTag.material.rotation = THREE.MathUtils.degToRad(opts.nameTagRot)
       }
       container.add(nameTag)
     }
 
-    // ---- 记录动画参数 ----
-    container.userData.animationType = opts.animation
-    container.userData.animEnabled = opts.animEnabled
-    container.userData.rippleEnabled = opts.ripple
-    container.userData.labelHeight = labelHeight
-    container.userData.phase = phase
-    container.userData.ringColor = color
-    container.userData.labelId = item.id
-    container.userData.labelName = item.name
+    // ---- 缓存动画引用（避免每帧 children.find 遍历） ----
+    const anim = {
+      icon: iconClone,
+      ripples: rippleGroup ? rippleGroup.children : [],
+      rippleEnabled: !!opts.ripple,
+      animEnabled: opts.animEnabled,
+      animType: opts.animation || 'bounce',
+      labelHeight,
+      phase,
+    }
+    container.userData._anim = anim
 
     group.add(container)
     this.labels.push(container)
@@ -448,49 +440,37 @@ export class LabelRenderer {
     this.prevTime = elapsedTime
 
     for (const container of this.labels) {
+      // 可见性：容器自身 + 所属图层组（直接检查 parent.visible，O(1)）
       if (!container.visible) continue
-      let node = container.parent
-      let groupVisible = true
-      while (node && node !== this.root) {
-        if (node.visible === false) { groupVisible = false; break }
-        node = node.parent
-      }
-      if (!groupVisible) continue
+      if (container.parent && !container.parent.visible) continue
 
-      // 涟漪
-      if (container.userData.rippleEnabled) {
-        const rippleGroup = container.children.find(
-          (c) => c.userData && c.userData.isRipple,
-        )
-        if (rippleGroup) {
-          for (const rip of rippleGroup.children) {
-            const t = (elapsedTime * RIPPLE_SPEED + rip.userData.ripplePhase) % 1
-            rip.scale.setScalar((0.25 + t) * rip.userData.baseScale)
-            rip.material.opacity = 0.55 * (1 - t) * (1 - t)
-          }
+      const anim = container.userData._anim
+      if (!anim) continue
+
+      // ---- 涟漪 ----
+      if (anim.rippleEnabled) {
+        const ripples = anim.ripples
+        for (let i = 0, len = ripples.length; i < len; i++) {
+          const rip = ripples[i]
+          const t = (elapsedTime * RIPPLE_SPEED + rip.userData.ripplePhase) % 1
+          rip.scale.setScalar((0.25 + t) * rip.userData.baseScale)
+          rip.material.opacity = 0.55 * (1 - t) * (1 - t)
         }
       }
 
-      // 弹跳/旋转
-      const animOn = container.userData.animEnabled
-      const animType = container.userData.animationType || 'bounce'
-      const phase = container.userData.phase || 0
+      // ---- 弹跳 / 旋转 ----
+      if (!anim.animEnabled) continue
 
-      for (const child of container.children) {
-        if (!child.userData || !child.userData.isLabel) continue
+      const icon = anim.icon
+      const type = anim.animType
 
-        if (animOn && (animType === 'bounce' || animType === 'both')) {
-          child.position.y =
-            container.userData.labelHeight +
-            BOUNCE_AMPLITUDE * Math.sin(BOUNCE_SPEED * elapsedTime + phase)
-        }
-        if (animOn && (animType === 'rotate' || animType === 'both')) {
-          child.rotation.z += ROTATION_SPEED * delta
-        }
-        if (!animOn) {
-          child.position.y = container.userData.labelHeight
-          child.rotation.z = 0
-        }
+      if (type === 'bounce' || type === 'both') {
+        icon.position.y =
+          anim.labelHeight +
+          BOUNCE_AMPLITUDE * Math.sin(BOUNCE_SPEED * elapsedTime + anim.phase)
+      }
+      if (type === 'rotate' || type === 'both') {
+        icon.rotation.z += ROTATION_SPEED * delta
       }
     }
   }

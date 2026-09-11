@@ -303,7 +303,7 @@ export class BimViewerController {
       const cam = this.cameraManager.camera
       cam.updateMatrixWorld()
       this.tileModelLoader.update()
-      this.labelRenderer.update(this.labelClock.elapsedTime)
+      this.labelRenderer.update(this.labelClock.getElapsedTime())
 
       if (this.dualPass) {
         // ---- 双相机透视：三步合成 ----
