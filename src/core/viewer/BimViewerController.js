@@ -5,6 +5,7 @@ import { EnvironmentManager } from './EnvironmentManager'
 import { CameraManager } from './CameraManager'
 import { GltfModelLoader } from '../loaders/GltfModelLoader'
 import { TileModelLoader } from '../loaders/TileModelLoader'
+import { LabelRenderer } from '../loaders/LabelRenderer'
 
 /**
  * BIM 查看器控制器。
@@ -36,6 +37,12 @@ export class BimViewerController {
 
   // ---- 3D Tiles 加载管理器 ----
   tileModelLoader
+
+  // ---- 3D 标签渲染器 ----
+  labelRenderer
+
+  // ---- 动画时钟（标签涟漪/弹跳用） ----
+  labelClock = new THREE.Clock(false)
 
   // ---- 双相机透视：Layer 0 外壳（3D Tiles）/ Layer 1 内部（GLB） ----
   camInner = new THREE.PerspectiveCamera(45, 1, 1, 1e7)
@@ -120,6 +127,13 @@ export class BimViewerController {
         // 将计算好的观察距离转换为 flyTo 的 markerScale 参数
         this.cameraManager.flyTo(target, distance / 12, duration)
       },
+    })
+
+    // 3D 标签渲染器
+    this.labelRenderer = new LabelRenderer({
+      scene: this.scene,
+      getEcefToSceneTransform: () => this.tileModelLoader.getFirstTransform(),
+      whenTerrainReady: () => this.tileModelLoader.whenReady(),
     })
 
     // ---- 双相机透视基础设施 ----
@@ -259,6 +273,7 @@ export class BimViewerController {
     this.resizeObserver.disconnect()
     this.gltfModelLoader.disablePicking()
     this.clearAnnotations()
+    this.labelRenderer.dispose()
     this.tileModelLoader.dispose()
     this.cameraManager.dispose()
     this.environment.dispose()
@@ -275,6 +290,7 @@ export class BimViewerController {
   // ========== 渲染循环 ==========
 
   startLoop() {
+    this.labelClock.start()
     const renderFrame = () => {
       this.animationFrameId = window.requestAnimationFrame(renderFrame)
 
@@ -287,6 +303,7 @@ export class BimViewerController {
       const cam = this.cameraManager.camera
       cam.updateMatrixWorld()
       this.tileModelLoader.update()
+      this.labelRenderer.update(this.labelClock.elapsedTime)
 
       if (this.dualPass) {
         // ---- 双相机透视：三步合成 ----
@@ -351,6 +368,11 @@ export class BimViewerController {
       this.camInner.updateProjectionMatrix()
       this.rtInner.setSize(width, height)
     }
+  }
+
+  /** 获取标签渲染器实例 */
+  getLabelRenderer() {
+    return this.labelRenderer
   }
 
   /** 获取相机管理器实例 */

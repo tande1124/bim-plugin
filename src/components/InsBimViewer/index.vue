@@ -218,6 +218,32 @@ export default defineComponent({
     setDualPass(enabled) {
       this.controller?.setDualPass(enabled)
     },
+
+    /**
+     * 加载并渲染 3D 标签，完成后自动飞行到标签位置。
+     * 图标路径由配置对象的 list[].icon 字段指定。
+     * @param {Object} config - 标签配置对象（含 type、list 字段）
+     */
+    async renderLabels(config) {
+      const loader = this.controller?.getLabelRenderer()
+      if (!loader) return
+      await loader.renderFromConfig(config)
+
+      // 创建完成后飞行到标签位置
+      const target = loader.getFlyTarget()
+      if (target && this.controller) {
+        this.controller.cameraManager.flyTo(target.center, target.distance / 12, 1200)
+      }
+    },
+
+    /**
+     * 切换标签图层的显隐。
+     * @param {string} type - 图层组 ID（对应配置中的 type 字段）
+     * @param {boolean} visible
+     */
+    setLabelVisible(type, visible) {
+      this.controller?.getLabelRenderer()?.setGroupVisible(type, visible)
+    },
   },
 })
 </script>

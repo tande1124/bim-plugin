@@ -8,6 +8,7 @@
           <el-switch v-model="envShow" active-text="环境" @change="handleSceneEvent"></el-switch>
           <el-checkbox style="margin-left: 30px;" v-model="tileShow" @change="handleLayerToggle">地形</el-checkbox>
           <el-checkbox v-model="canansShow" @change="handleDualPassToggle">双透视</el-checkbox>
+          <el-button style="margin:5px 30px;" type="primary" size="small" @click="handleRenderLabels">标签</el-button>
       </div>
 
 </template>
@@ -15,6 +16,7 @@
 <script>
 import { createApp } from 'vue'
 import PartInfoLabel from './PartInfoLabel.vue'
+import labelConfig from '../config/label'
 
 export default {
     data() {
@@ -34,6 +36,9 @@ export default {
 
             tileShow: true,
             canansShow: true,
+            labelConfig: labelConfig,
+            labelsVisible: false,
+            labelsLoaded: false,
         }
     },
     methods: {
@@ -70,6 +75,21 @@ export default {
         handleDualPassToggle() {
             if (this.$refs.bimViewer) {
                 this.$refs.bimViewer.setDualPass(this.canansShow)
+            }
+        },
+        async handleRenderLabels() {
+            if (!this.$refs.bimViewer) return
+            try {
+                if (!this.labelsLoaded) {
+                    await this.$refs.bimViewer.renderLabels(this.labelConfig)
+                    this.labelsLoaded = true
+                    this.labelsVisible = true
+                } else {
+                    this.labelsVisible = !this.labelsVisible
+                    this.$refs.bimViewer.setLabelVisible('label', this.labelsVisible)
+                }
+            } catch (error) {
+                console.error('[handleRenderLabels] 标签渲染失败:', error)
             }
         },
     },
