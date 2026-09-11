@@ -28,6 +28,10 @@ function createDefaultLibrary() {
   lib.solid.push({ id: 'm12', color: '#ff44aa', name: '粉色' })
   lib.solid.push({ id: 'm13', color: '#8a5a2b', name: '棕色' })
   lib.solid.push({ id: 'm14', color: '#44dd88', name: '绿色光泽' })
+  lib.solid.push({ id: 'm68', color: '#a3d900', name: '青柠' })
+  lib.solid.push({ id: 'm69', color: '#44aaff', name: '天蓝' })
+  lib.solid.push({ id: 'm70', color: '#3355ee', name: '靛蓝' })
+  lib.solid.push({ id: 'm71', color: '#cc44ff', name: '品红' })
 
   // 贴图
   lib.tex.push({ id: 'm40', color: '#b0b0b0', name: '水泥地', textureDataURL: './assets/textures/concrete.jpg', tileX: 2, tileY: 2 })
@@ -56,6 +60,13 @@ function createDefaultLibrary() {
   lib.metal.push({ id: 'm26', color: '#4d4d4d', name: '深灰金属', metalness: 0.85, roughness: 0.3 })
   lib.metal.push({ id: 'm27', color: '#004466', name: '蓝钢', metalness: 0.9, roughness: 0.2 })
   lib.metal.push({ id: 'm28', color: '#111111', name: '黑金属', metalness: 0.9, roughness: 0.25 })
+  lib.metal.push({ id: 'm72', color: '#22cc44', name: '绿色金属', metalness: 0.85, roughness: 0.22 })
+  lib.metal.push({ id: 'm73', color: '#00c98a', name: '青绿金属', metalness: 0.85, roughness: 0.22 })
+  lib.metal.push({ id: 'm74', color: '#00bbdd', name: '青色金属', metalness: 0.85, roughness: 0.22 })
+  lib.metal.push({ id: 'm75', color: '#44aaff', name: '天蓝金属', metalness: 0.85, roughness: 0.22 })
+  lib.metal.push({ id: 'm76', color: '#3355ee', name: '靛蓝金属', metalness: 0.85, roughness: 0.22 })
+  lib.metal.push({ id: 'm77', color: '#ff44aa', name: '粉色金属', metalness: 0.85, roughness: 0.22 })
+  lib.metal.push({ id: 'm78', color: '#cc44ff', name: '品红金属', metalness: 0.85, roughness: 0.22 })
 
   // 半透明
   lib.trans.push({ id: 'm29', color: '#ff6644', name: '半透明红', opacity: 0.6 })
@@ -66,11 +77,30 @@ function createDefaultLibrary() {
   lib.trans.push({ id: 'm34', color: '#88ccff', name: '半透明青', opacity: 0.6 })
   lib.trans.push({ id: 'm35', color: '#ffffff', name: '半透明白', opacity: 0.6 })
   lib.trans.push({ id: 'm36', color: '#888888', name: '半透明灰', opacity: 0.6 })
+  lib.trans.push({ id: 'm79', color: '#ff8800', name: '半透明橙', opacity: 0.6 })
+  lib.trans.push({ id: 'm80', color: '#a3d900', name: '半透明青柠', opacity: 0.6 })
+  lib.trans.push({ id: 'm81', color: '#00c98a', name: '半透明青绿', opacity: 0.6 })
+  lib.trans.push({ id: 'm82', color: '#44bbff', name: '半透明天蓝', opacity: 0.6 })
+  lib.trans.push({ id: 'm83', color: '#3355ee', name: '半透明靛蓝', opacity: 0.6 })
+  lib.trans.push({ id: 'm84', color: '#cc44ff', name: '半透明品红', opacity: 0.6 })
+  lib.trans.push({ id: 'm85', color: '#ff44aa', name: '半透明粉', opacity: 0.6 })
+  lib.trans.push({ id: 'm86', color: '#8a5a2b', name: '半透明棕', opacity: 0.6 })
 
   // 其它（线框等）
   lib.other.push({ id: 'm37', color: '#00ffff', name: '青色线框', wireframe: true })
   lib.other.push({ id: 'm38', color: '#ff4444', name: '红色线框', wireframe: true })
   lib.other.push({ id: 'm39', color: '#44ff44', name: '绿色线框', wireframe: true })
+  lib.other.push({ id: 'm100', color: '#ff8800', name: '橙色线框', wireframe: true })
+  lib.other.push({ id: 'm101', color: '#ffcc00', name: '黄色线框', wireframe: true })
+  lib.other.push({ id: 'm102', color: '#a3d900', name: '青柠线框', wireframe: true })
+  lib.other.push({ id: 'm103', color: '#00c98a', name: '青绿线框', wireframe: true })
+  lib.other.push({ id: 'm104', color: '#44aaff', name: '天蓝线框', wireframe: true })
+  lib.other.push({ id: 'm105', color: '#4488ff', name: '蓝色线框', wireframe: true })
+  lib.other.push({ id: 'm106', color: '#3355ee', name: '靛蓝线框', wireframe: true })
+  lib.other.push({ id: 'm107', color: '#aa44ff', name: '紫色线框', wireframe: true })
+  lib.other.push({ id: 'm108', color: '#cc44ff', name: '品红线框', wireframe: true })
+  lib.other.push({ id: 'm109', color: '#ff66aa', name: '粉线框', wireframe: true })
+  lib.other.push({ id: 'm110', color: '#8a5a2b', name: '棕线框', wireframe: true })
 
   // 玻璃（物理折射）
   lib.glass.push({ id: 'm50', color: '#88ddff', name: '蓝色玻璃', ior: 1.5, opacity: 0.2 })
@@ -81,6 +111,13 @@ function createDefaultLibrary() {
   lib.glass.push({ id: 'm55', color: '#ffffff', name: '透明玻璃', ior: 1.5, opacity: 0.15 })
   lib.glass.push({ id: 'm56', color: '#ff88aa', name: '粉色玻璃', ior: 1.5, opacity: 0.2 })
   lib.glass.push({ id: 'm57', color: '#44aaff', name: '海洋蓝玻璃', ior: 1.4, opacity: 0.25 })
+  lib.glass.push({ id: 'm87', color: '#ff8800', name: '橙色玻璃', ior: 1.5, opacity: 0.2 })
+  lib.glass.push({ id: 'm88', color: '#a3d900', name: '青柠玻璃', ior: 1.5, opacity: 0.2 })
+  lib.glass.push({ id: 'm89', color: '#00c98a', name: '青绿玻璃', ior: 1.5, opacity: 0.2 })
+  lib.glass.push({ id: 'm90', color: '#00bbdd', name: '青色玻璃', ior: 1.5, opacity: 0.2 })
+  lib.glass.push({ id: 'm91', color: '#3355ee', name: '靛蓝玻璃', ior: 1.5, opacity: 0.2 })
+  lib.glass.push({ id: 'm92', color: '#cc44ff', name: '品红玻璃', ior: 1.5, opacity: 0.2 })
+  lib.glass.push({ id: 'm93', color: '#8a5a2b', name: '棕玻璃', ior: 1.5, opacity: 0.2 })
 
   // 线框（边线覆盖层）
   lib.wireframe.push({ id: 'm58', color: '#00ffff', name: '青色线框', edgeThreshold: 45 })
@@ -93,6 +130,12 @@ function createDefaultLibrary() {
   lib.wireframe.push({ id: 'm65', color: '#ff66aa', name: '粉色线框', edgeThreshold: 45 })
   lib.wireframe.push({ id: 'm66', color: '#ffffff', name: '白色线框', edgeThreshold: 45 })
   lib.wireframe.push({ id: 'm67', color: '#444444', name: '深灰线框', edgeThreshold: 45 })
+  lib.wireframe.push({ id: 'm94', color: '#a3d900', name: '青柠线框', edgeThreshold: 45 })
+  lib.wireframe.push({ id: 'm95', color: '#00c98a', name: '青绿线框', edgeThreshold: 45 })
+  lib.wireframe.push({ id: 'm96', color: '#44aaff', name: '天蓝线框', edgeThreshold: 45 })
+  lib.wireframe.push({ id: 'm97', color: '#3355ee', name: '靛蓝线框', edgeThreshold: 45 })
+  lib.wireframe.push({ id: 'm98', color: '#cc44ff', name: '品红线框', edgeThreshold: 45 })
+  lib.wireframe.push({ id: 'm99', color: '#8a5a2b', name: '棕线框', edgeThreshold: 45 })
 
   return lib
 }
