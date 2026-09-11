@@ -65,7 +65,7 @@ export default {
         list: [
           {
             id: 1,
-            name: "边坡", // 标签名称（显示在名称牌上）
+            name: "料仓场地", // 标签名称（显示在名称牌上）
             longitude: 98.348505, // 经度
             latitude: 29.633465, // 纬度
             altitude: 2711.1, // 高程（米）
@@ -75,19 +75,19 @@ export default {
               color: "#88ddff", // 圆环/涟漪颜色，CSS 颜色值
               animation: "bounce", // 动画类型：bounce(弹跳) / rotate(旋转) / both(两者) / none(无)
               animEnabled: true, // 是否启用动画
-              scale: 100, // 整体缩放，BIM 场景较大建议 30-80
+              scale: 200, // 整体缩放，BIM 场景较大建议 30-80
               labelHeight: 0.3, // 图标离地高度
               ripple: true, // 是否显示底部涟漪扩散动画
               showName: true, // 是否显示名称牌
               nameStyle: "bubble", // 名称牌样式：bubble(气泡) / glow(霓虹发光)
               nameTagHeight: 1.3, // 名称牌距离标签顶部的高度
-              nameTagSize: 1, // 名称牌大小缩放
+              nameTagSize: 1.5, // 名称牌大小缩放
               rotation: 0, // 整体 Y 轴旋转角度（度）
             },
           },
           {
             id: 2,
-            name: "边坡2", // 标签名称（显示在名称牌上）
+            name: "边坡", // 标签名称（显示在名称牌上）
             longitude: 98.345574, // 经度
             latitude: 29.650348, // 纬度
             altitude: 2829.9, // 高程（米）
@@ -97,13 +97,13 @@ export default {
               color: "#88ddff", // 圆环/涟漪颜色，CSS 颜色值
               animation: "bounce", // 动画类型：bounce(弹跳) / rotate(旋转) / both(两者) / none(无)
               animEnabled: true, // 是否启用动画
-              scale: 100, // 整体缩放，BIM 场景较大建议 30-80
+              scale: 200, // 整体缩放，BIM 场景较大建议 30-80
               labelHeight: 0.3, // 图标离地高度
               ripple: true, // 是否显示底部涟漪扩散动画
               showName: true, // 是否显示名称牌
               nameStyle: "bubble", // 名称牌样式：bubble(气泡) / glow(霓虹发光)
               nameTagHeight: 1.3, // 名称牌距离标签顶部的高度
-              nameTagSize: 1, // 名称牌大小缩放
+              nameTagSize: 1.5, // 名称牌大小缩放
               rotation: 0, // 整体 Y 轴旋转角度（度）
             },
           },

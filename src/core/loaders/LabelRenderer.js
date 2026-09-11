@@ -11,6 +11,12 @@ const BOUNCE_SPEED = 2.5
 const ROTATION_SPEED = 1.8
 const RIPPLE_SPEED = 0.45
 
+// ========== 自适应缩放 ==========
+
+const ADAPTIVE_MIN_SCALE = 0.3   // 最小缩放倍率
+const ADAPTIVE_MAX_SCALE = 5.0   // 最大缩放倍率
+const ADAPTIVE_LERP = 0.08       // 平滑插值系数
+
 // ========== 默认 opts ==========
 
 const DEFAULT_OPTS = {
@@ -206,6 +212,11 @@ export class LabelRenderer {
   loader = new GLTFLoader()
   prevTime = 0
 
+  /** 自适应缩放：参考距离（首次 update 时捕获） */
+  referenceDistance = 0
+  /** 自适应缩放：当前缩放倍率（平滑后） */
+  scaleMultiplier = 1
+
   /** 射线拾取 */
   raycaster = new THREE.Raycaster()
   pickCamera = null
@@ -372,6 +383,7 @@ export class LabelRenderer {
     const container = new THREE.Group()
     container.userData.labelId = item.id
     container.userData.labelData = { id: item.id, name: item.name, longitude: item.longitude, latitude: item.latitude, altitude: item.altitude }
+    container.userData.baseScale = scale  // 基础缩放，用于自适应缩放计算
     container.position.copy(ecef)
     container.scale.set(scale, scale, scale)
     if (opts.rotation) {
@@ -465,6 +477,36 @@ export class LabelRenderer {
   update(elapsedTime) {
     const delta = elapsedTime - this.prevTime
     this.prevTime = elapsedTime
+
+    // ---- 自适应缩放：根据相机距离动态调整标签大小 ----
+    const camera = this.deps.getCamera?.()
+    if (camera && this.labels.length > 0) {
+      // 计算相机到场景中心的距离
+      const camPos = camera.position
+      const sceneCenter = new THREE.Vector3(0, 0, 0)
+      const currentDistance = camPos.distanceTo(sceneCenter)
+
+      // 首次捕获参考距离
+      if (this.referenceDistance === 0) {
+        this.referenceDistance = currentDistance
+      }
+
+      // 计算目标缩放倍率并平滑插值
+      const targetMultiplier = Math.max(
+        ADAPTIVE_MIN_SCALE,
+        Math.min(ADAPTIVE_MAX_SCALE, currentDistance / this.referenceDistance),
+      )
+      this.scaleMultiplier += (targetMultiplier - this.scaleMultiplier) * ADAPTIVE_LERP
+
+      // 应用到每个标签
+      for (const c of this.labels) {
+        const baseScale = c.userData.baseScale
+        if (baseScale) {
+          const s = baseScale * this.scaleMultiplier
+          c.scale.set(s, s, s)
+        }
+      }
+    }
 
     for (const container of this.labels) {
       // 可见性：容器自身 + 所属图层组（直接检查 parent.visible，O(1)）

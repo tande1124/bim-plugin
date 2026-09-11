@@ -64,11 +64,16 @@ export default defineComponent({
         new BimViewerController({
           onGltfPick: (info) => {
             console.log('Gltf 模型点击事件', info)
+            if(!info) {
+              this.clearAnnotations()
+            }
             this.$emit('gltf-pick', info)
           },
           onLabelClick: (info) => {
             console.log('3D 标签点击事件', info)
+            this.clearAnnotations()
             this.$emit('label-click', info)
+            this.flyToLabel(info.id)
           },
         }),
       )
@@ -248,7 +253,7 @@ export default defineComponent({
      * @param {number|string} id - 标签 ID
      * @param {number} [duration=1200] - 飞行动画时长（毫秒）
      */
-    flyToLabel(id, duration = 1200) {
+    flyToLabel(id, duration = 3000) {
       const loader = this.controller?.getLabelRenderer()
       if (!loader) return
       const target = loader.flyToLabel(id)

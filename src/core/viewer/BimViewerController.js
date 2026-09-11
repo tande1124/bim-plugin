@@ -133,6 +133,7 @@ export class BimViewerController {
     // 3D 标签渲染器
     this.labelRenderer = new LabelRenderer({
       scene: this.scene,
+      getCamera: () => this.cameraManager.camera,
       getEcefToSceneTransform: () => this.tileModelLoader.getFirstTransform(),
       whenTerrainReady: () => this.tileModelLoader.whenReady(),
       onLabelClick: (info) => {
