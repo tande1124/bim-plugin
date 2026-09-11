@@ -23,7 +23,7 @@
     }
   },
   "envLight": {
-    "intensity": 2,
+    "intensity": 1,
     "bgIntensity": 1.5,
     "exposure": 1.3
   }

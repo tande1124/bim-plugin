@@ -315,6 +315,7 @@ export class BimViewerController {
 
       if (this.dualPass) {
         // ---- 双相机透视：三步合成 ----
+        this.renderer.autoClear = false
         this.camInner.copy(cam)
         this.camInner.layers.set(1)
 
@@ -344,8 +345,25 @@ export class BimViewerController {
         this.renderer.render(this.sceneOverlay, this.camOrtho)
       } else {
         // ---- 单层模式：一步渲染 ----
+        this.renderer.autoClear = true
         this.renderer.render(this.scene, cam)
       }
+
+      // ---- 标签层始终在最上层（Layer 2，清深度后叠加） ----
+      // 临时移除背景和雾，避免标签通道重绘背景覆盖场景
+      const savedBg = this.scene.background
+      const savedFog = this.scene.fog
+      this.scene.background = null
+      this.scene.fog = null
+      this.renderer.autoClear = false
+      this.renderer.clearDepth()
+      const savedMask = cam.layers.mask
+      cam.layers.set(2)
+      this.renderer.render(this.scene, cam)
+      cam.layers.mask = savedMask
+      this.scene.background = savedBg
+      this.scene.fog = savedFog
+      this.renderer.autoClear = true
 
       // CSS2D 标注层始终在主渲染之后绘制
       this.css2dRenderer.render(this.scene, cam)
