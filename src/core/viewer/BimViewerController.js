@@ -6,6 +6,7 @@ import { CameraManager } from './CameraManager'
 import { GltfModelLoader } from '../loaders/GltfModelLoader'
 import { TileModelLoader } from '../loaders/TileModelLoader'
 import { LabelRenderer } from '../loaders/LabelRenderer'
+import { createEcefToSceneFromGeoInfo } from '../../utils/geo-coordinate'
 
 /**
  * BIM 查看器控制器。
@@ -111,7 +112,7 @@ export class BimViewerController {
     this.gltfModelLoader = new GltfModelLoader({
       scene: this.scene,
       renderer: this.renderer,
-      getEcefToSceneTransform: () => this.tileModelLoader.getFirstTransform(),
+      getEcefToSceneTransform: () => this.getEcefToSceneTransform(),
       whenTerrainReady: () => this.tileModelLoader.whenReady(),
       onPick: (info, position) => {
         callbacks.onGltfPick?.(info, position)
@@ -134,7 +135,7 @@ export class BimViewerController {
     this.labelRenderer = new LabelRenderer({
       scene: this.scene,
       getCamera: () => this.cameraManager.camera,
-      getEcefToSceneTransform: () => this.tileModelLoader.getFirstTransform(),
+      getEcefToSceneTransform: () => this.getEcefToSceneTransform(),
       whenTerrainReady: () => this.tileModelLoader.whenReady(),
       onLabelClick: (info) => {
         callbacks.onLabelClick?.(info)
@@ -385,6 +386,22 @@ export class BimViewerController {
   /** 获取相机管理器实例 */
   getCameraManager() {
     return this.cameraManager
+  }
+
+  /**
+   * 获取 ECEF → 场景变换矩阵。
+   * 优先从 3D Tiles 获取，无 3D Tiles 时用 biz-config.js 的 geoInfo 兆底。
+   * @returns {THREE.Matrix4|null}
+   */
+  getEcefToSceneTransform() {
+    const fromTiles = this.tileModelLoader.getFirstTransform()
+    if (fromTiles) return fromTiles
+    // 兆底：从 geoInfo 配置反算
+    const geoInfo = window.BizConfig?.glbConfig?.geoInfo
+    if (geoInfo) {
+      return createEcefToSceneFromGeoInfo(geoInfo)
+    }
+    return null
   }
 
   /**

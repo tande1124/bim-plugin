@@ -70,6 +70,66 @@ export function lonLatHeightToEcef(longitude, latitude, height = 0) {
   return new THREE.Vector3(x, y, z)
 }
 
+/**
+ * 根据参考经纬度构建 ECEF → 场景局部坐标的变换矩阵（兆底方案）。
+ *
+ * 当没有 3D Tiles 提供变换矩阵时，以指定经纬度为原点构建局部切平面坐标系：
+ * X=东，Y=上，Z=南（右手系）。
+ *
+ * @param {number} longitude - 参考经度（度）
+ * @param {number} latitude - 参考纬度（度）
+ * @param {number} [altitude=0] - 参考高程（米）
+ * @returns {THREE.Matrix4}
+ */
+export function createEcefToSceneFallback(longitude, latitude, altitude = 0) {
+  const originEcef = lonLatHeightToEcef(longitude, latitude, altitude)
+  const lonRad = THREE.MathUtils.degToRad(longitude)
+  const latRad = THREE.MathUtils.degToRad(latitude)
+
+  // ENU 基向量（ECEF 系）
+  const east = new THREE.Vector3(-Math.sin(lonRad), Math.cos(lonRad), 0)
+  const north = new THREE.Vector3(
+    -Math.sin(latRad) * Math.cos(lonRad),
+    -Math.sin(latRad) * Math.sin(lonRad),
+    Math.cos(latRad),
+  )
+  const up = new THREE.Vector3(
+    Math.cos(latRad) * Math.cos(lonRad),
+    Math.cos(latRad) * Math.sin(lonRad),
+    Math.sin(latRad),
+  )
+
+  // 场景坐标系：X=东，Y=上，Z=南（右手系）
+  const south = north.clone().negate()
+  const matrix = new THREE.Matrix4().makeBasis(east, up, south)
+  matrix.setPosition(originEcef)
+  matrix.invert()
+
+  return matrix
+}
+
+/**
+ * 从 biz-config.js 的 geoInfo 配置构建 ECEF → 场景变换矩阵（兆底方案）。
+ *
+ * 通过 CGCS2000 投影坐标反算原点经纬度，再构建 ENU 切平面坐标系。
+ * 当没有 3D Tiles 提供变换矩阵时使用。
+ *
+ * @param {Object} geoInfo - geoInfo 配置对象
+ * @param {number} geoInfo.centralMeridianDeg - 中央子午线经度（度）
+ * @param {number} geoInfo.offsetX - 模型原点投影东坐标（米）
+ * @param {number} geoInfo.offsetY - 模型原点投影北坐标（米）
+ * @param {number} [geoInfo.offsetZ=0] - 模型原点高程（米）
+ * @returns {THREE.Matrix4}
+ */
+export function createEcefToSceneFromGeoInfo(geoInfo) {
+  const { longitude, latitude } = gaussKrugerInverse(
+    geoInfo.offsetX,
+    geoInfo.offsetY,
+    geoInfo.centralMeridianDeg,
+  )
+  return createEcefToSceneFallback(longitude, latitude, geoInfo.offsetZ ?? 0)
+}
+
 // ========== ECEF → 场景局部坐标 ==========
 
 /**
