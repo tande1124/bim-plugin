@@ -183,7 +183,7 @@ export class BimViewerController {
 
   // ========== 公共方法 ==========
 
-  /** 挂载 canvas 到容器，构建场景环境（天空+光照），启动渲染循环 */
+  /** 挂载 canvas 到容器，启动渲染循环。envConfigUrl 可选，不传时跳过环境加载。 */
   async mount(container, envConfigUrl) {
     this.container = container
     this.container.innerHTML = ''
@@ -197,10 +197,12 @@ export class BimViewerController {
     this.resizeObserver.observe(container)
     this.handleResize()
 
-    // 先构建场景环境（天空、光照），避免黑屏
-    await this.applyEnvConfig(envConfigUrl)
+    // 仅在有 URL 时加载环境配置（天空、光照），否则跳过，外部按需调用 applyEnvConfig
+    if (envConfigUrl) {
+      await this.applyEnvConfig(envConfigUrl)
+    }
 
-    // 环境就绪，画布淡入
+    // 画布淡入
     this.renderer.domElement.style.opacity = '1'
 
     this.startLoop()

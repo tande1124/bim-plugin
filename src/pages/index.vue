@@ -1,6 +1,5 @@
 <template>
-    <InsBimPlusViewer ref="bimViewer" :tileset-sources="tilesetSources" :gltf-sources="gltfSources"
-        :env-config="envConfig" :material-config="materialConfig" @ready="onReady" @model-loaded="onModelLoaded"
+    <InsBimPlusViewer ref="bimViewer" @ready="onReady" @model-loaded="onModelLoaded"
         @error="onError" @gltf-pick="onPartClick" @label-click="onLabelClick" />
     <div class="operation-container flex">
         <el-switch v-model="envShow" active-text="环境" @change="handleSceneEvent"></el-switch>
@@ -29,8 +28,8 @@ export default {
                     url: "http://192.168.8.77:3000/data/gltf/rm/RM_.glb",
                 },
             ],
-            materialConfig: "./config/material-config.json",
-            envConfig: "./config/env-config.json",
+            materialConfigUrl: "./config/material-config.json",
+            envConfigUrl: "./config/env-config.json",
             controller: null, // 底层控制器实例
             envShow: true, // 环境显示
             tileShow: true, // 地形显示
@@ -90,13 +89,30 @@ export default {
         };
     },
     methods: {
-        // 获取底层控制器实例
-        onReady(controller) {
+        // 场景就绪后，按顺序加载环境、材质、地形、模型、标签
+        async onReady(controller) {
             this.controller = controller;
-              // 渲染标签
-            if (this.$refs.bimViewer) {
-                this.$refs.bimViewer.renderLabels(this.labelConfig);
-            }
+            const v = this.$refs.bimViewer;
+            if (!v) return;
+
+            // 1. 环境配置
+            await v.applyEnvConfig(this.envConfigUrl);
+
+            // 2. 材质配置（先于模型加载，后续 loadGltfModels 会自动应用）
+            await v.applyMaterialConfig(this.materialConfigUrl);
+
+            // 3. 加载地形
+            v.showLoading('正在加载地形…');
+            await v.loadTilesets(this.tilesetSources);
+
+            // 4. 加载模型（自动应用已设置的材质配置）
+            v.showLoading('正在加载模型…');
+            await v.loadGltfModels(this.gltfSources);
+
+            // 5. 渲染标签
+            await v.renderLabels(this.labelConfig);
+
+            v.hideLoading();
         },
         onModelLoaded() {
           

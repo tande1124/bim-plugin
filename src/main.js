@@ -3,8 +3,13 @@
  */
 
 import InsBimViewer from './components/InsBimViewer'
+import { bimControls } from './exports/bimControls'
+
 export default {
     install(app) {
         app.component('InsBimPlusViewer', InsBimViewer)
     }
 }
+
+// 外部工具类
+export { bimControls }

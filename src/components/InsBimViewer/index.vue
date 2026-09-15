@@ -6,8 +6,6 @@
       <div class="viewer-loading-spinner"></div>
       <div class="viewer-loading-text">{{ loadingText }}</div>
     </div>
-    <!-- 相机参数弹窗 -->
-    <CameraInfoDialog :controller="controller" />
   </div>
 </template>
 
@@ -15,59 +13,35 @@
 import { defineComponent, markRaw } from 'vue'
 import { BimViewerController } from '../../core/viewer/BimViewerController'
 import { MaterialConfigurator } from '../../core/loaders/MaterialConfigurator'
-import CameraInfoDialog from '../common/CameraInfoDialog.vue'
+import { registerViewer, unregisterViewer } from '../../exports/internal/viewerRegistry'
 
 export default defineComponent({
-  name: 'ThreeTilesViewer',
-  components: { CameraInfoDialog },
-  props: {
-    /** 3D Tiles 数据源列表 [{id, url}] */
-    tilesetSources: {
-      type: Array,
-      default: () => [],
-      validator: (v) => v.every((s) => s && typeof s.id === 'string' && typeof s.url === 'string'),
-    },
-    /** GLTF 数据源列表 [{id, url}] */
-    gltfSources: {
-      type: Array,
-      default: () => [],
-      validator: (v) => v.every((s) => s && typeof s.id === 'string' && typeof s.url === 'string'),
-    },
-    /** 环境配置文件 */
-    envConfig: {
-      type: String,
-      default: '',
-    },
-    /** 材质配置文件路径 */
-    materialConfig: {
-      type: String,
-      default: '',
-    },
-  },
+  name: 'InsBimPlusViewer',
   emits: ['ready', 'gltf-pick', 'label-click', 'model-loaded', 'error'],
   data() {
     return {
       controller: null,
-      loading: true,
-      loadingText: '正在初始化场景…',
+      loading: false,
+      loadingText: '',
       /** 材质配置器缓存实例（避免重复构建） */
       _matCfgInstance: null,
+      /** 当前材质配置 URL，供后续 loadGltfModels 自动应用 */
+      _materialConfigUrl: '',
     }
   },
   async mounted() {
     await this.bootstrap()
   },
   beforeUnmount() {
+    unregisterViewer()
     this.controller?.destroy()
     this.controller = null
   },
   methods: {
-    /** 初始化 Three.js 场景并加载默认地形与模型 */
+    /** 初始化 Three.js 场景（仅挂载 DOM + 启动渲染循环），完成后 emit ready */
     async bootstrap() {
       const viewerRoot = this.$refs.viewerRoot
-      if (!viewerRoot) {
-        return
-      }
+      if (!viewerRoot) return
 
       this.loading = true
       this.loadingText = '正在初始化场景…'
@@ -76,9 +50,7 @@ export default defineComponent({
         new BimViewerController({
           onGltfPick: (info) => {
             console.log('Gltf 模型点击事件', info)
-            if(!info) {
-              this.clearAnnotations()
-            }
+            if (!info) this.clearAnnotations()
             this.$emit('gltf-pick', info)
           },
           onLabelClick: (info) => {
@@ -89,77 +61,53 @@ export default defineComponent({
           },
         }),
       )
-      await this.controller.mount(viewerRoot, this.envConfig || undefined)
-      this.$emit('ready', this.controller)
+      // 仅挂载 DOM + 启动渲染循环，不加载任何环境配置
+      await this.controller.mount(viewerRoot)
 
-      // 加载 3D Tiles 地形（无数据源或加载失败时跳过，不影响 GLB 加载）
-      if (this.tilesetSources.length > 0) {
-        try {
-          this.loadingText = '正在加载地形…'
-          await this.loadTilesets()
-        } catch (error) {
-          this.$message.warning('3DTiles 场景加载失败', error)
-          this.$emit('error', { type: 'tileset', error })
-        }
-      }
-
-      // 加载 GLB 模型
-      if (this.gltfSources.length > 0) {
-        try {
-          this.loadingText = '正在加载模型…'
-          await this.loadGltfModels()
-        } catch (error) {
-          this.$message.error('GLB 模型加载失败', error)
-          this.$emit('error', { type: 'gltf', error })
-        }
-      }
-
-      // 兜底：若无 3D Tiles（load-tile-set 事件未触发），在此应用相机配置
-      const cameraCfg = window.BizConfig?.glbConfig?.camera
-      if (cameraCfg && !this.controller.cameraManager.isViewSettled()) {
-        this.controller.applyCameraConfig(cameraCfg)
-      }
+      // 注册到全局注册中心，供 bimControls 外部 API 使用
+      registerViewer(this.controller)
 
       this.loading = false
+      this.$emit('ready', this.controller)
     },
 
-    /** 加载 tilesetSources 中的 3D Tiles 场景 */
-    async loadTilesets() {
-      if (!this.controller) return
-      const sources = this.tilesetSources.map((s) => ({
+    // ========== 数据加载（外部通过 ref 调用） ==========
+
+    /**
+     * 加载 3D Tiles 地形。
+     * @param {Array<{id: string, url: string, name?: string}>} sources
+     */
+    async loadTilesets(sources) {
+      if (!this.controller || !sources?.length) return
+      const mapped = sources.map((s) => ({
         id: s.id,
         name: s.name || s.id,
         kind: 'terrain',
         url: s.url,
       }))
-      await this.controller.loadScene(sources)
+      await this.controller.loadScene(mapped)
     },
 
-    /** 依次加载 gltfSources 中的 GLTF 模型 */
-    async loadGltfModels() {
-      if (!this.controller) return
+    /**
+     * 依次加载 GLTF 模型。
+     * 若之前调用过 applyMaterialConfig，会自动将材质配置应用到新加载的模型。
+     * @param {Array<{id: string, url: string}>} sources
+     */
+    async loadGltfModels(sources) {
+      if (!this.controller || !sources?.length) return
       const loader = this.controller.getGltfModelLoader()
-      const renderer = this.controller.renderer
       const geoInfo = window.BizConfig?.glbConfig?.geoInfo
       if (!geoInfo) {
         console.warn('未找到地理配准配置，跳过 geo 定位。')
       }
 
-      // 材质配置器复用（避免循环内重复构建 ID 映射）
-      if (!this._matCfgInstance && this.materialConfig) {
-        this._matCfgInstance = new MaterialConfigurator(renderer)
-      }
-      const matCfg = this._matCfgInstance
-
-      for (const source of this.gltfSources) {
+      for (const source of sources) {
         try {
           const model = await loader.loadGltf(source.url, { geo: geoInfo })
 
-          if (matCfg) {
-            await matCfg.applyFromUrl(
-              this.materialConfig,
-              model,
-            )
+          // 自动应用已缓存的材质配置
+          if (this._materialConfigUrl && this._matCfgInstance) {
+            await this._matCfgInstance.applyFromUrl(this._materialConfigUrl, model)
           }
           console.log(`已加载模型: ${source.id} (${source.url})`)
           this.$emit('model-loaded', { id: source.id, url: source.url })
@@ -168,6 +116,86 @@ export default defineComponent({
           this.$emit('error', { type: 'gltf', error, id: source.id, url: source.url })
         }
       }
+    },
+
+    // ========== 配置管理（整体替换） ==========
+
+    /**
+     * 从 JSON 文件重新加载整套环境配置（天空/HDR/光照/曝光）。
+     * @param {string} url - env-config.json 路径
+     */
+    async applyEnvConfig(url) {
+      await this.controller?.applyEnvConfig(url)
+    },
+
+    /**
+     * 从 JSON 文件重新加载材质映射，并重新应用到所有已加载 GLB 模型。
+     * 后续调用 loadGltfModels 时也会自动应用此配置。
+     * @param {string} url - material-config.json 路径
+     */
+    async applyMaterialConfig(url) {
+      if (!this.controller) return
+      if (!this._matCfgInstance) {
+        this._matCfgInstance = new MaterialConfigurator(this.controller.renderer)
+      }
+      this._materialConfigUrl = url
+      // 重新应用到所有已加载的 GLB 模型
+      const root = this.controller.getGltfModelLoader()?.root
+      if (root) {
+        for (const model of root.children) {
+          await this._matCfgInstance.applyFromUrl(url, model)
+        }
+      }
+    },
+
+    /**
+     * 设置相机位置和观察目标。
+     * @param {{ position?: {x,y,z}, target?: {x,y,z} }} cfg
+     */
+    applyCameraConfig(cfg) {
+      this.controller?.applyCameraConfig(cfg)
+    },
+
+    // ========== 运行时细粒度调参 ==========
+
+    /**
+     * 修改单个环境参数并立即生效。
+     * key 支持点分路径，如 'envLight.exposure'、'dirLight.intensity'。
+     * @param {string} key
+     * @param {*} value
+     */
+    setEnvParam(key, value) {
+      const env = this.controller?.environment
+      if (!env?.config) return
+      const parts = key.split('.')
+      let obj = env.config
+      for (let i = 0; i < parts.length - 1; i++) {
+        obj = obj[parts[i]]
+        if (!obj) return
+      }
+      obj[parts.at(-1)] = value
+      env.applyAllParams()
+    },
+
+    /**
+     * 返回当前环境配置对象（只读快照）。
+     * @returns {Object|null}
+     */
+    getEnvConfig() {
+      return this.controller?.environment?.getConfig() ?? null
+    },
+
+    // ========== 加载遮罩 ==========
+
+    /** 显示加载遮罩 */
+    showLoading(text = '加载中…') {
+      this.loadingText = text
+      this.loading = true
+    },
+
+    /** 隐藏加载遮罩 */
+    hideLoading() {
+      this.loading = false
     },
 
     // ========== 公共方法（外部通过 ref 调用） ==========
