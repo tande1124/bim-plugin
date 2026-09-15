@@ -301,72 +301,75 @@ export class BimViewerController {
     this.labelClock.start()
     const renderFrame = () => {
       this.animationFrameId = window.requestAnimationFrame(renderFrame)
+      try {
+        if (this.cameraManager.tickFlyAnimation()) {
+          // 飞行动画进行中，跳过 controls.update()
+        } else {
+          this.cameraManager.controls.update()
+        }
 
-      if (this.cameraManager.tickFlyAnimation()) {
-        // 飞行动画进行中，跳过 controls.update()
-      } else {
-        this.cameraManager.controls.update()
-      }
+        const cam = this.cameraManager.camera
+        cam.updateMatrixWorld()
+        this.tileModelLoader.update()
+        this.labelRenderer.update(this.labelClock.getElapsedTime())
 
-      const cam = this.cameraManager.camera
-      cam.updateMatrixWorld()
-      this.tileModelLoader.update()
-      this.labelRenderer.update(this.labelClock.getElapsedTime())
+        if (this.dualPass) {
+          // ---- 双相机透视：三步合成 ----
+          this.renderer.autoClear = false
+          this.camInner.copy(cam)
+          this.camInner.layers.set(1)
 
-      if (this.dualPass) {
-        // ---- 双相机透视：三步合成 ----
-        this.renderer.autoClear = false
-        this.camInner.copy(cam)
-        this.camInner.layers.set(1)
+          // 临时禁用背景和雾
+          const savedBackground = this.scene.background
+          const savedFog = this.scene.fog
+          this.scene.background = null
+          this.scene.fog = null
 
-        // 临时禁用背景和雾
-        const savedBackground = this.scene.background
+          // 1. 渲染 GLB 到 rtInner（透明背景）
+          this.renderer.setRenderTarget(this.rtInner)
+          this.renderer.setClearColor(0x000000, 0)
+          this.renderer.clear(true, true, false)
+          this.renderer.render(this.scene, this.camInner)
+
+          // 恢复背景和雾效
+          this.scene.background = savedBackground
+          this.scene.fog = savedFog
+
+          // 2. 渲染外壳到屏幕（Layer 0 的 3D Tiles + 天空）
+          this.renderer.setRenderTarget(null)
+          this.renderer.clear(true, true, false)
+          this.renderer.render(this.scene, cam)
+
+          // 3. 叠加 GLB（含轮廓）：只清深度、保留外壳颜色
+          this.renderer.clearDepth()
+          this.renderer.render(this.sceneOverlay, this.camOrtho)
+        } else {
+          // ---- 单层模式：一步渲染 ----
+          this.renderer.autoClear = true
+          this.renderer.render(this.scene, cam)
+        }
+
+        // ---- 标签层始终在最上层（Layer 2，清深度后叠加） ----
+        // 临时移除背景和雾，避免标签通道重绘背景覆盖场景
+        const savedBg = this.scene.background
         const savedFog = this.scene.fog
         this.scene.background = null
         this.scene.fog = null
-
-        // 1. 渲染 GLB 到 rtInner（透明背景）
-        this.renderer.setRenderTarget(this.rtInner)
-        this.renderer.setClearColor(0x000000, 0)
-        this.renderer.clear(true, true, false)
-        this.renderer.render(this.scene, this.camInner)
-
-        // 恢复背景和雾效
-        this.scene.background = savedBackground
-        this.scene.fog = savedFog
-
-        // 2. 渲染外壳到屏幕（Layer 0 的 3D Tiles + 天空）
-        this.renderer.setRenderTarget(null)
-        this.renderer.clear(true, true, false)
-        this.renderer.render(this.scene, cam)
-
-        // 3. 叠加 GLB（含轮廓）：只清深度、保留外壳颜色
+        this.renderer.autoClear = false
         this.renderer.clearDepth()
-        this.renderer.render(this.sceneOverlay, this.camOrtho)
-      } else {
-        // ---- 单层模式：一步渲染 ----
-        this.renderer.autoClear = true
+        const savedMask = cam.layers.mask
+        cam.layers.set(2)
         this.renderer.render(this.scene, cam)
+        cam.layers.mask = savedMask
+        this.scene.background = savedBg
+        this.scene.fog = savedFog
+        this.renderer.autoClear = true
+
+        // CSS2D 标注层始终在主渲染之后绘制
+        this.css2dRenderer.render(this.scene, cam)
+      } catch (err) {
+        console.error('[BimViewerController] 渲染循环异常:', err)
       }
-
-      // ---- 标签层始终在最上层（Layer 2，清深度后叠加） ----
-      // 临时移除背景和雾，避免标签通道重绘背景覆盖场景
-      const savedBg = this.scene.background
-      const savedFog = this.scene.fog
-      this.scene.background = null
-      this.scene.fog = null
-      this.renderer.autoClear = false
-      this.renderer.clearDepth()
-      const savedMask = cam.layers.mask
-      cam.layers.set(2)
-      this.renderer.render(this.scene, cam)
-      cam.layers.mask = savedMask
-      this.scene.background = savedBg
-      this.scene.fog = savedFog
-      this.renderer.autoClear = true
-
-      // CSS2D 标注层始终在主渲染之后绘制
-      this.css2dRenderer.render(this.scene, cam)
     }
 
     renderFrame()
@@ -408,13 +411,13 @@ export class BimViewerController {
 
   /**
    * 获取 ECEF → 场景变换矩阵。
-   * 优先从 3D Tiles 获取，无 3D Tiles 时用 biz-config.js 的 geoInfo 兆底。
+   * 优先从 3D Tiles 获取，无 3D Tiles 时用 biz-config.js 的 geoInfo 兜底。
    * @returns {THREE.Matrix4|null}
    */
   getEcefToSceneTransform() {
     const fromTiles = this.tileModelLoader.getFirstTransform()
     if (fromTiles) return fromTiles
-    // 兆底：从 geoInfo 配置反算
+    // 兜底：从 geoInfo 配置反算
     const geoInfo = window.BizConfig?.glbConfig?.geoInfo
     if (geoInfo) {
       return createEcefToSceneFromGeoInfo(geoInfo)
@@ -462,14 +465,21 @@ export class BimViewerController {
 
   /**
    * 在 3D 世界坐标处添加一个 HTML 标注。
+   *
+   * 如果 element 上挂载了 Vue 组件（通过 element.__vueApp__ 标记），
+   * clearAnnotations 时会自动 unmount，避免内存泄漏。
+   *
    * @param {THREE.Vector3} position - 世界坐标
    * @param {HTMLElement} element - DOM 元素（可预先挂载 Vue 组件）
+   * @param {Object} [vueApp] - 关联的 Vue app 实例（createApp 返回值），清理时自动 unmount
    * @returns {CSS2DObject} 标注对象引用，可用于后续移除
    */
-  addAnnotation(position, element) {
+  addAnnotation(position, element, vueApp) {
     this.clearAnnotations()
     const label = new CSS2DObject(element)
     label.position.copy(position)
+    // 记录 Vue app 实例，清理时 unmount
+    if (vueApp) element.__vueApp__ = vueApp
     this.scene.add(label)
     this.css2dLabels.push(label)
     return label
@@ -480,6 +490,11 @@ export class BimViewerController {
     this.scene.remove(label)
     const idx = this.css2dLabels.indexOf(label)
     if (idx !== -1) this.css2dLabels.splice(idx, 1)
+    // unmount 关联的 Vue 组件，防止内存泄漏
+    if (label.element?.__vueApp__) {
+      label.element.__vueApp__.unmount()
+      label.element.__vueApp__ = null
+    }
     if (label.element?.parentNode) {
       label.element.parentNode.removeChild(label.element)
     }
@@ -489,6 +504,11 @@ export class BimViewerController {
   clearAnnotations() {
     for (const label of this.css2dLabels) {
       this.scene.remove(label)
+      // unmount 关联的 Vue 组件，防止内存泄漏
+      if (label.element?.__vueApp__) {
+        label.element.__vueApp__.unmount()
+        label.element.__vueApp__ = null
+      }
       if (label.element?.parentNode) {
         label.element.parentNode.removeChild(label.element)
       }

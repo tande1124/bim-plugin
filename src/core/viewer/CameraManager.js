@@ -33,7 +33,6 @@ export class CameraManager {
   /** 用户手动操作后禁止后续自动聚焦覆盖视角 */
   hasSettledView = false
   fitTimerId = 0
-  groundingTimerId = 0
 
   flyAnimation = {
     active: false,
@@ -45,15 +44,10 @@ export class CameraManager {
     toTarget: new THREE.Vector3(),
   }
 
-  callbacks
-
   /**
    * @param {HTMLElement} domElement
-   * @param {Object} [callbacks]
-   * @param {Function} [callbacks.onGrounding] - 请求重新贴地点位（地形加载后刷新点位高程）
    */
-  constructor(domElement, callbacks = {}) {
-    this.callbacks = callbacks
+  constructor(domElement) {
 
     this.camera = new THREE.PerspectiveCamera(45, 1, 1, 1e7)
     this.camera.position.set(0, 3000, 4000)
@@ -143,19 +137,6 @@ export class CameraManager {
     }, 160)
   }
 
-  /**
-   * 延迟重新贴地点位（防抖 160ms）。
-   * 地形瓦片加载后，用最新几何体刷新点位高程。
-   * @param {number} [delay=160]
-   */
-  scheduleGrounding(delay = 160) {
-    window.clearTimeout(this.groundingTimerId)
-    this.groundingTimerId = window.setTimeout(() => {
-      this.groundingTimerId = 0
-      this.callbacks.onGrounding?.()
-    }, delay)
-  }
-
   // ========== 飞行 ==========
 
   /**
@@ -231,7 +212,6 @@ export class CameraManager {
   /** 释放定时器与控制器资源 */
   dispose() {
     window.clearTimeout(this.fitTimerId)
-    window.clearTimeout(this.groundingTimerId)
     this.controls.dispose()
   }
 }

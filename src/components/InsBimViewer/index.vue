@@ -1,6 +1,11 @@
 <template>
   <div class="viewer-panel">
     <div ref="viewerRoot" class="threejs-viewer-canvas"></div>
+    <!-- 加载遮罩 -->
+    <div v-if="loading" class="viewer-loading-overlay">
+      <div class="viewer-loading-spinner"></div>
+      <div class="viewer-loading-text">{{ loadingText }}</div>
+    </div>
     <!-- 相机参数弹窗 -->
     <CameraInfoDialog :controller="controller" />
   </div>
@@ -43,6 +48,10 @@ export default defineComponent({
   data() {
     return {
       controller: null,
+      loading: true,
+      loadingText: '正在初始化场景…',
+      /** 材质配置器缓存实例（避免重复构建） */
+      _matCfgInstance: null,
     }
   },
   async mounted() {
@@ -59,6 +68,9 @@ export default defineComponent({
       if (!viewerRoot) {
         return
       }
+
+      this.loading = true
+      this.loadingText = '正在初始化场景…'
 
       this.controller = markRaw(
         new BimViewerController({
@@ -83,6 +95,7 @@ export default defineComponent({
       // 加载 3D Tiles 地形（无数据源或加载失败时跳过，不影响 GLB 加载）
       if (this.tilesetSources.length > 0) {
         try {
+          this.loadingText = '正在加载地形…'
           await this.loadTilesets()
         } catch (error) {
           this.$message.warning('3DTiles 场景加载失败', error)
@@ -93,6 +106,7 @@ export default defineComponent({
       // 加载 GLB 模型
       if (this.gltfSources.length > 0) {
         try {
+          this.loadingText = '正在加载模型…'
           await this.loadGltfModels()
         } catch (error) {
           this.$message.error('GLB 模型加载失败', error)
@@ -105,6 +119,8 @@ export default defineComponent({
       if (cameraCfg && !this.controller.cameraManager.isViewSettled()) {
         this.controller.applyCameraConfig(cameraCfg)
       }
+
+      this.loading = false
     },
 
     /** 加载 tilesetSources 中的 3D Tiles 场景 */
@@ -130,7 +146,10 @@ export default defineComponent({
       }
 
       // 材质配置器复用（避免循环内重复构建 ID 映射）
-      const matCfg = this.materialConfig ? new MaterialConfigurator(renderer) : null
+      if (!this._matCfgInstance && this.materialConfig) {
+        this._matCfgInstance = new MaterialConfigurator(renderer)
+      }
+      const matCfg = this._matCfgInstance
 
       for (const source of this.gltfSources) {
         try {
@@ -176,8 +195,11 @@ export default defineComponent({
       }
       const part = info.object
       if (typeof matKey === 'string') {
-        const mc = new MaterialConfigurator(this.controller?.renderer)
-        const mat = mc.getMaterialByKey(matKey)
+        // 复用缓存的材质配置器实例
+        if (!this._matCfgInstance) {
+          this._matCfgInstance = new MaterialConfigurator(this.controller?.renderer)
+        }
+        const mat = this._matCfgInstance.getMaterialByKey(matKey)
         if (!mat || !mat.isMaterial) return false
         part.traverse((c) => { if (c.isMesh) c.material = mat })
         return true
@@ -202,9 +224,13 @@ export default defineComponent({
       this.controller?.clearGltfHighlight()
     },
 
-    /** 添加html标注（位置，元素） */
-    addAnnotation(position, element) {
-      this.controller?.addAnnotation(position, element)
+    /** 添加html标注（位置，元素）
+     * @param {THREE.Vector3} position - 世界坐标
+     * @param {HTMLElement} element - DOM 元素
+     * @param {Object} [vueApp] - 关联的 Vue app 实例，清理时自动 unmount
+     */
+    addAnnotation(position, element, vueApp) {
+      this.controller?.addAnnotation(position, element, vueApp)
     },
 
     /** 清除所有标注 */
@@ -266,6 +292,9 @@ export default defineComponent({
 </script>
 
 <style >
+.viewer-panel {
+  position: relative;
+}
 .viewer-panel,
 .viewer-panel .threejs-viewer-canvas {
   width: 100%;
@@ -273,5 +302,40 @@ export default defineComponent({
   margin: 0;
   padding: 0;
   overflow: hidden;
+}
+
+/* 加载遮罩 */
+.viewer-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 26, 0.75);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.viewer-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: rgba(32, 160, 255, 0.9);
+  border-radius: 50%;
+  animation: viewer-spin 0.8s linear infinite;
+}
+
+@keyframes viewer-spin {
+  to { transform: rotate(360deg); }
+}
+
+.viewer-loading-text {
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
 }
 </style>

@@ -8,9 +8,8 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 /**
  * Basis Universal（KTX2）转码器资源路径。
  *
- * three 的 KTX2Loader 需要 basis_transcoder.{js,wasm}，这里从
- * node_modules/three/examples/jsm/libs/basis 拷贝到 public/libs/basis
- * 后在运行时按 URL 加载，避免打包器改写模块内相对路径。
+ * 使用 CDN 加载 basis_transcoder.{js,wasm}，避免本地 libs 目录增大包体积。
+ * 运行时 KTX2Loader 按 URL 加载 Worker，无需打包器处理。
  */
 const KTX2_TRANSCODER_PATH = './libs/basis/'
 

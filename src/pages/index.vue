@@ -117,7 +117,7 @@ export default {
                 // const pos = info.worldPosition.clone()
                 // pos.z += 0  // 抬高值，可根据需要调整
                 // pos.y += 50  // 抬高值，可根据需要调整
-                this.$refs.bimViewer.addAnnotation(info.worldPosition, el);
+                this.$refs.bimViewer.addAnnotation(info.worldPosition, el, app);
             }
         },
 

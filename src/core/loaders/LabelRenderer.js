@@ -230,6 +230,8 @@ export class LabelRenderer {
     referenceDistance = 0
     /** 自适应缩放：当前缩放倍率（平滑后） */
     scaleMultiplier = 1
+    /** 场景中心点（复用，避免每帧 new） */
+    _sceneCenter = new THREE.Vector3()
 
     /** 射线拾取 */
     raycaster = new THREE.Raycaster()
@@ -507,8 +509,7 @@ export class LabelRenderer {
         if (camera && this.labels.length > 0) {
             // 计算相机到场景中心的距离
             const camPos = camera.position
-            const sceneCenter = new THREE.Vector3(0, 0, 0)
-            const currentDistance = camPos.distanceTo(sceneCenter)
+            const currentDistance = camPos.distanceTo(this._sceneCenter)
 
             // 首次捕获参考距离
             if (this.referenceDistance === 0) {
