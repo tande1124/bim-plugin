@@ -39,17 +39,14 @@ export class GltfModelLoader {
   outlineGroup = new THREE.Group()
   /** 当前 GLB 网格所在图层（双透模式=1，单层模式=0） */
   currentLayer = 1
-  /** 轮廓线共享材质：白色、反面绘制、略微放大 */
+  /** 轮廓线共享材质：白色、反面绘制 */
   outlineMaterial = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     side: THREE.BackSide,
     depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -1,
-    polygonOffsetUnits: -1,
   })
-  /** 部件放大比例（相对于部件包围盒） */
-  static OUTLINE_SCALE = 1.02
+  /** 部件放大比例（相对于部件包围盒），1.0 表示不放大 */
+  static OUTLINE_SCALE = 1.0
 
   /**
    * @param {Object} deps - 依赖注入

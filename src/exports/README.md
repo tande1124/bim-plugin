@@ -431,7 +431,7 @@ bimControls.flyToLabel(1, 2000)
 </template>
 
 <script>
-import { bimControls } from '@ins/vam2-plugin-bim'
+import { bimControls } from '@ins/vam2-plugin-bim'  // 也可以直接用controller
 
 export default {
     data() {
@@ -442,6 +442,7 @@ export default {
             gltfSources: [
                 { id: 'rm-glb', url: 'http://server/data/gltf/rm/RM_.glb' },
             ],
+            controler: null  // 底层查看器
         }
     },
     methods: {
@@ -450,6 +451,8 @@ export default {
          * @param {BimViewerController} controller - 底层查看器实例
          */
         async onReady(controller) {
+            this.controler = controler
+
             // 1. 加载环境配置（天空/HDR/光照/曝光）
             await bimControls.applyEnvConfig('./config/env-config.json')
 
