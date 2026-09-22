@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { disposeObject3D } from '../../utils/three-dispose'
 import { createGeoReferenceMatrix } from '../../utils/geo-coordinate'
 
@@ -42,7 +43,7 @@ export class GltfModelLoader {
   /** 轮廓线共享材质：白色、反面绘制 */
   outlineMaterial = new THREE.MeshBasicMaterial({
     color: 0xffffff,
-    side: THREE.BackSide,
+    side: THREE.FrontSide,
     depthWrite: false,
   })
   /** 部件放大比例（相对于部件包围盒），1.0 表示不放大 */
@@ -69,6 +70,13 @@ export class GltfModelLoader {
     this.deps.scene.add(this.root)
 
     this.loader = new GLTFLoader()
+
+    // Draco 解码器（支持 Draco 压缩的 GLB/GLTF）
+    // 仅当模型包含 Draco 压缩时才会按需加载解码器
+    const dracoLoader = new DRACOLoader()
+    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/libs/draco/')
+    this.loader.setDRACOLoader(dracoLoader)
+
     // 射线拾取启用所有图层，确保 Layer 1（GLB 内部层）的网格也能被点击命中
     this.raycaster.layers.enableAll()
   }

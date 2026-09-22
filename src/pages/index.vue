@@ -1,6 +1,6 @@
 <template>
-    <InsBimPlusViewer ref="bimViewer" @ready="onReady" @model-loaded="onModelLoaded"
-        @error="onError" @gltf-pick="onPartClick" @label-click="onLabelClick" />
+    <InsBimPlusViewer ref="bimViewer" @ready="onReady" @model-loaded="onModelLoaded" @error="onError"
+        @gltf-pick="onPartClick" @label-click="onLabelClick" />
     <div class="operation-container flex">
         <el-switch v-model="envShow" active-text="环境" @change="handleSceneEvent"></el-switch>
         <el-checkbox style="margin-left: 30px" v-model="tileShow" @change="handleLayerToggle">地形</el-checkbox>
@@ -26,6 +26,10 @@ export default {
                 {
                     id: "rm-glb",
                     url: "http://192.168.8.77:3000/data/gltf/rm/RM_.glb",
+                },
+                {
+                    id: "rm-model",
+                    url: "http://192.168.8.77:3000/data/gltf/rm/model.glb",
                 },
             ],
             materialConfigUrl: "./config/material-config.json",
@@ -115,7 +119,7 @@ export default {
             v.hideLoading();
         },
         onModelLoaded() {
-          
+
         },
         onError({ type, error }) { },
         onPartClick(info) {
