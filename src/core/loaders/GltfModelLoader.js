@@ -74,7 +74,7 @@ export class GltfModelLoader {
     // Draco 解码器（支持 Draco 压缩的 GLB/GLTF）
     // 仅当模型包含 Draco 压缩时才会按需加载解码器
     const dracoLoader = new DRACOLoader()
-    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/libs/draco/')
+    dracoLoader.setDecoderPath('/libs/threeJs/draco/gltf/')
     this.loader.setDRACOLoader(dracoLoader)
 
     // 射线拾取启用所有图层，确保 Layer 1（GLB 内部层）的网格也能被点击命中
