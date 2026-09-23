@@ -278,6 +278,24 @@ export default defineComponent({
     },
 
     
+    /**
+     * 根据来源 ID 移除指定的 3D Tiles 瓦片集。
+     * @param {string} id - 数据源 ID（对应 tilesetSources[].id）
+     * @returns {boolean} 是否成功移除
+     */
+    removeTileset(id) {
+      return this.controller?.removeTileset(id) ?? false
+    },
+
+    /**
+     * 根据来源 ID 移除指定的 GLB 模型。
+     * @param {string} id - 模型来源 ID（对应 gltfSources[].id）
+     * @returns {boolean} 是否成功移除
+     */
+    removeGltfModel(id) {
+      return this.controller?.removeGltfModel(id) ?? false
+    },
+
     /** 控制环境贴图是否启用 */
     controlEnvEnabled(enabled) {
       this.controller?.environment.controlEnvMapEnabled(enabled)

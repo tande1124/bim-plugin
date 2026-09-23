@@ -390,6 +390,36 @@ bimControls.setLayerVisible('rm-tileset', false)
 
 ---
 
+### `removeTileset(id)`
+
+根据来源 ID 移除指定的 3D Tiles 瓦片集，释放相关资源。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `id` | `string` | 数据源 ID（加载时传入的 `id`） |
+| **返回** | `boolean` | 是否成功移除 |
+
+```js
+bimControls.removeTileset('rm-tileset')
+```
+
+---
+
+### `removeGltfModel(id)`
+
+根据来源 ID 移除指定的 GLB 模型，释放相关资源。若该模型有高亮状态会自动清除。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `id` | `string` | 模型来源 ID（加载时传入的 `id`） |
+| **返回** | `boolean` | 是否成功移除 |
+
+```js
+bimControls.removeGltfModel('rm-glb')
+```
+
+---
+
 ### `setDualPass(enabled)`
 
 切换双相机透视渲染模式。ON 时 GLB 透明叠加在 3D Tiles 外壳上，OFF 时单层渲染。

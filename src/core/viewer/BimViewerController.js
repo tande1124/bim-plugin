@@ -231,6 +231,24 @@ export class BimViewerController {
     this.tileModelLoader.setLayerVisible(sourceId, visible)
   }
 
+  /**
+   * 根据来源 ID 移除指定的 3D Tiles 瓦片集。
+   * @param {string} sourceId - 数据源 ID
+   * @returns {boolean}
+   */
+  removeTileset(sourceId) {
+    return this.tileModelLoader.removeById(sourceId)
+  }
+
+  /**
+   * 根据来源 ID 移除指定的 GLB 模型。
+   * @param {string} sourceId - 模型来源 ID
+   * @returns {boolean}
+   */
+  removeGltfModel(sourceId) {
+    return this.gltfModelLoader.removeById(sourceId)
+  }
+
   /** 清除 GLB 部件高亮 */
   clearGltfHighlight() {
     this.gltfModelLoader.clearHighlight()

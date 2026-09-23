@@ -239,6 +239,24 @@ const bimControls = {
     getViewer()?.setLayerVisible(sourceId, visible)
   },
 
+  /**
+   * 根据来源 ID 移除指定的 3D Tiles 瓦片集。
+   * @param {string} id - 数据源 ID（对应 tilesetSources[].id）
+   * @returns {boolean} 是否成功移除
+   */
+  removeTileset(id) {
+    return getViewer()?.removeTileset(id) ?? false
+  },
+
+  /**
+   * 根据来源 ID 移除指定的 GLB 模型。
+   * @param {string} id - 模型来源 ID（对应 gltfSources[].id）
+   * @returns {boolean} 是否成功移除
+   */
+  removeGltfModel(id) {
+    return getViewer()?.removeGltfModel(id) ?? false
+  },
+
   /** 切换双相机透视渲染模式 */
   setDualPass(enabled) {
     getViewer()?.setDualPass(enabled)

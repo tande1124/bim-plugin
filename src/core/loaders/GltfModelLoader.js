@@ -341,6 +341,33 @@ export class GltfModelLoader {
     this.root.clear()
   }
 
+  /**
+   * 根据来源 ID 移除指定的 GLB 模型。
+   * @param {string} sourceId - 模型来源 ID（加载时传入的 id）
+   * @returns {boolean} 是否成功移除
+   */
+  removeById(sourceId) {
+    const idx = this.root.children.findIndex(
+      (child) => child.userData?.sourceId === sourceId,
+    )
+    if (idx === -1) return false
+    const model = this.root.children[idx]
+    // 如果当前高亮对象在被移除的模型内部，先清除高亮
+    if (this.highlightedObject) {
+      let node = this.highlightedObject
+      while (node) {
+        if (node === model) {
+          this.clearHighlight()
+          break
+        }
+        node = node.parent
+      }
+    }
+    this.root.remove(model)
+    disposeObject3D(model)
+    return true
+  }
+
   // ========== 地理配准 ==========
 
   /** 按地理配准参数把 GLB 定位到场景（等待地形就绪后应用矩阵） */

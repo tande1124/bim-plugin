@@ -265,6 +265,25 @@ export class TileModelLoader {
     this.ready = false
   }
 
+  /**
+   * 根据来源 ID 移除指定的瓦片集。
+   * @param {string} sourceId - 数据源 ID（加载时传入的 id）
+   * @returns {boolean} 是否成功移除
+   */
+  removeById(sourceId) {
+    const camera = this.deps.getCamera()
+    const idx = this.tilesRenderers.findIndex(
+      (tr) => tr.group.userData.sourceId === sourceId,
+    )
+    if (idx === -1) return false
+    const tr = this.tilesRenderers[idx]
+    tr.deleteCamera(camera)
+    this.root.remove(tr.group)
+    tr.dispose()
+    this.tilesRenderers.splice(idx, 1)
+    return true
+  }
+
   /** 释放全部资源（含 KTX2 解码器） */
   dispose() {
     this.clear()
