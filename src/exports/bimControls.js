@@ -55,7 +55,7 @@ const bimControls = {
 
     for (const source of sources) {
       try {
-        const model = await loader.loadGltf(source.url, { geo: geoInfo })
+        const model = await loader.loadGltf(source.url, { geo: geoInfo, id: source.id, name: source.name })
 
         // 自动应用已缓存的材质配置
         if (_materialConfigUrl && _matCfgInstance) {
@@ -140,6 +140,15 @@ const bimControls = {
 
 
   // ========== 部件操作 ==========
+
+  /**
+   * 通过来源 ID 获取模型结构树。
+   * @param {string} id - 模型来源 ID（对应 gltfSources[].id）
+   * @returns {Object|null} 树结构数据
+   */
+  getModelTreeById(id) {
+    return getViewer()?.getGltfModelLoader()?.getModelTreeById(id) ?? null
+  },
 
   /**
    * 按名称查找部件，返回结构化信息（与 gltf-pick 事件 info 格式一致）。

@@ -241,6 +241,25 @@ console.log(cfg.envLight.exposure) // 1.3
 
 ## 部件操作
 
+### `getModelTreeById(id)`
+
+通过来源 ID 获取模型结构树，返回递归树形数据。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `id` | `string` | 模型来源 ID（对应 `gltfSources[].id`） |
+| **返回** | `Object \| null` | 树结构数据，含 `id`、`name`、`type`、`children` 字段 |
+
+```js
+const tree = bimControls.getModelTreeById('rm-model')
+if (tree) {
+    console.log(tree.name)   // '隧道模型'
+    console.log(tree.children) // 子节点数组
+}
+```
+
+---
+
 ### `findPartByName(name)`
 
 按名称查找部件，返回结构化信息（与 `gltf-pick` 事件 info 格式一致）。

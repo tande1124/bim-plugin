@@ -74,7 +74,7 @@ export class GltfModelLoader {
     // Draco 解码器（支持 Draco 压缩的 GLB/GLTF）
     // 仅当模型包含 Draco 压缩时才会按需加载解码器
     const dracoLoader = new DRACOLoader()
-    dracoLoader.setDecoderPath('/libs/threeJs/draco/gltf/')
+    dracoLoader.setDecoderPath('./libs/threeJs/draco/gltf/')
     this.loader.setDRACOLoader(dracoLoader)
 
     // 射线拾取启用所有图层，确保 Layer 1（GLB 内部层）的网格也能被点击命中
@@ -129,6 +129,11 @@ export class GltfModelLoader {
     const model = options.geo
       ? await this.load(url, { ...loadOptions, center: false })
       : await this.load(url, loadOptions)
+
+    // 存储来源 ID，便于后续通过 ID 查找模型
+    if (options.id) model.userData.sourceId = options.id
+    // 存储显示名称，用于模型树和路径显示
+    if (options.name) model.userData.displayName = options.name
 
     if (options.fitCamera !== false) {
       this.deps.onRequestFitCamera?.()
@@ -530,7 +535,34 @@ export class GltfModelLoader {
       names.unshift(node.name || '(未命名)')
       node = node.parent
     }
-    names.unshift(model.name || 'gltf-model')
+    names.unshift(model.userData?.displayName || model.name || 'gltf-model')
     return names.join(' / ')
+  }
+
+  // ========== 模型结构树 ==========
+
+  /**
+   * 通过来源 ID 获取模型结构树。
+   * @param {string} id - 模型来源 ID（对应 gltfSources[].id）
+   * @returns {Object|null} 树结构数据
+   */
+  getModelTreeById(id) {
+    for (const model of this.root.children) {
+      if (model.userData?.sourceId === id) {
+        return buildTreeNode(model)
+      }
+    }
+    return null
+
+
+    // 递归构建模型树节点
+    function buildTreeNode(obj) {
+      return {
+        id: obj.id,
+        name: obj.userData?.displayName || obj.name || '(未命名)',
+        type: obj.type,
+        children: obj.children.map((c) => buildTreeNode(c))
+      }
+    }
   }
 }

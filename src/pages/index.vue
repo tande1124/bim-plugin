@@ -6,29 +6,46 @@
         <el-checkbox style="margin-left: 30px" v-model="tileShow" @change="handleLayerToggle">地形</el-checkbox>
         <el-checkbox v-model="canansShow" @change="handleDualPassToggle">双透视</el-checkbox>
         <el-checkbox v-model="labelsVisible" @change="handleRenderLabels">标签</el-checkbox>
+        <el-button  type="primary"  style="margin:5px 30px" size="small" @click="getModelInfo">模型信息</el-button>
+    </div>
+    <div v-if="showModelTree" class="model-tree-panel">
+        <div class="panel-header">
+            <span>模型结构</span>
+            <el-button type="info" link @click="showModelTree = false">关闭</el-button>
+        </div>
+        <div class="panel-body">
+            <ModelTree :node="modelTreeData" :bimViewer="$refs.bimViewer" />
+        </div>
     </div>
 </template>
 
 <script>
 import { createApp } from "vue";
 import PartInfoLabel from "./PartInfoLabel.vue";
+import ModelTree from "./ModelTree.vue";
 
 export default {
+    components: {
+        ModelTree,
+    },
     data() {
         return {
             tilesetSources: [
                 {
                     id: "rm-tileset",
+                    name: "RM地形",
                     url: 'http://192.168.8.77:3000/data/3dtiles/rm/tileset.json',
                 },
             ],
             gltfSources: [
                 {
                     id: "rm-glb",
+                    name: "RM模型",
                     url: "http://192.168.8.77:3000/data/gltf/rm/RM_.glb",
                 },
                 {
                     id: "rm-model",
+                    name: "隧道模型",
                     url: "http://192.168.8.77:3000/data/gltf/rm/model.glb",
                 },
             ],
@@ -39,6 +56,8 @@ export default {
             tileShow: true, // 地形显示
             canansShow: true, // 双透视显示
             labelsVisible: true, // 标签显示
+            modelTreeData: null, // 模型树数据
+            showModelTree: false, // 是否显示模型树面板
 
             labelConfig: {
                 // 图层组类型（同类型标签归为一组，便于整体显隐控制）
@@ -92,6 +111,7 @@ export default {
             },
         };
     },
+    components: { ModelTree },
     methods: {
         // 场景就绪后，按顺序加载环境、材质、地形、模型、标签
         async onReady(controller) {
@@ -164,6 +184,12 @@ export default {
             if (!this.$refs.bimViewer) return;
             this.$refs.bimViewer.setLabelVisible("label", this.labelsVisible);
         },
+        getModelInfo() {
+            const id = this.gltfSources[1]?.id;
+            if (!id || !this.$refs.bimViewer) return;
+            this.modelTreeData = this.$refs.bimViewer.getModelTreeById(id);
+            this.showModelTree = !!this.modelTreeData;
+        },
     },
 };
 </script>
@@ -177,5 +203,35 @@ body,
     margin: 0;
     padding: 0;
     overflow: hidden;
+}
+
+.model-tree-panel {
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    width: 300px;
+    max-height: calc(100% - 80px);
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 6px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+}
+
+.model-tree-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #ebeef5;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.model-tree-panel .panel-body {
+    flex: 1;
+    overflow: auto;
+    padding: 8px;
 }
 </style>
