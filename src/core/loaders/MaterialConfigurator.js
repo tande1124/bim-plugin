@@ -244,7 +244,7 @@ function createWireframeMaterial(cfg) {
  * GLB 模型材质统一配置入口。
  *
  * 维护一份预置材质库（纯色 / 贴图 / 金属 / 半透明 / 玻璃 / 线框 / 其它），
- * 读取 material-config.json 中按 meshName 记录的材质分配，
+ * 读取配置数组中按 meshName 记录的材质分配，
  * 批量覆盖到已加载的 GLB 模型网格上。
  *
  * matKey 支持两种格式：
@@ -280,19 +280,12 @@ export class MaterialConfigurator {
   }
 
   /**
-   * 加载 material-state.json 并把材质覆盖应用到模型网格。
-   *
-   * @param {string} url - 材质状态 JSON 文件路径（相对 public 目录）
+   * 直接传入配置数组应用材质映射。
+   * @param {Array} arr - 材质配置数组
    * @param {THREE.Object3D} model - 已加载的 GLB 模型根节点
-   * @returns {Promise<{ hdrMeta: Object|null, appliedCount: number }>}
+   * @returns {{ hdrMeta: Object|null, appliedCount: number }}
    */
-  async applyFromUrl(url, model) {
-    const response = await fetch(url)
-    if (!response.ok) {
-      console.warn(`[MaterialConfigurator] 无法加载材质状态: ${url} (${response.status})`)
-      return { hdrMeta: null, appliedCount: 0 }
-    }
-    const arr = await response.json()
+  applyConfig(arr, model) {
     const { entries, hdrMeta } = this.parseStateArray(arr)
     const appliedCount = this.applyEntries(entries, model)
     return { hdrMeta, appliedCount }

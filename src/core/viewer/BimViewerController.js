@@ -183,8 +183,8 @@ export class BimViewerController {
 
   // ========== 公共方法 ==========
 
-  /** 挂载 canvas 到容器，启动渲染循环。envConfigUrl 可选，不传时跳过环境加载。 */
-  async mount(container, envConfigUrl) {
+  /** 挂载 canvas 到容器，启动渲染循环。 */
+  async mount(container) {
     this.container = container
     this.container.innerHTML = ''
     this.container.appendChild(this.renderer.domElement)
@@ -196,11 +196,6 @@ export class BimViewerController {
 
     this.resizeObserver.observe(container)
     this.handleResize()
-
-    // 仅在有 URL 时加载环境配置（天空、光照），否则跳过，外部按需调用 applyEnvConfig
-    if (envConfigUrl) {
-      await this.applyEnvConfig(envConfigUrl)
-    }
 
     // 画布淡入
     this.renderer.domElement.style.opacity = '1'
@@ -321,12 +316,15 @@ export class BimViewerController {
 
   // ========== 环境配置 ==========
 
-  /** 加载环境配置 */
-  async applyEnvConfig(url) {
+  /**
+   * 加载环境配置。
+   * @param {Object} config - 配置对象
+   */
+  async applyEnvConfig(config) {
     try {
-      await this.environment.applyFromUrl(url)
+      await this.environment.applyConfig(config)
     } catch (e) {
-      console.warn('[loadScene] 环境配置加载失败，使用默认参数。', e)
+      console.warn('[BimViewerController] 环境配置加载失败，使用默认参数。', e)
     }
   }
 

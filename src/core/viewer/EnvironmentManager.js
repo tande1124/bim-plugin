@@ -50,7 +50,7 @@ const DEFAULT_CONFIG = Object.freeze({
  * 用法：
  * ```js
  * const env = new EnvironmentManager(scene, renderer)
- * await env.applyFromUrl()
+ * env.applyConfig(configObject)
  * ```
  */
 export class EnvironmentManager {
@@ -80,33 +80,21 @@ export class EnvironmentManager {
   // ========== 公共方法 ==========
 
   /**
-   * 从 URL 加载 env-config.json 并应用全部环境配置。
-   *
-   * 执行顺序（对齐 environment.js applyAllParams）：
-   * 1. 主方向光 + 阴影  2. 环境/背景强度  3. 曝光
-   * @param {string} url
+   * 传入配置对象应用环境参数。
+   * 若配置中包含 envLight.hdrPath，会自动加载 HDR 环境贴图。
+   * @param {Object} cfg - 环境配置对象
    */
-  async applyFromUrl(url) {
-    let cfg = DEFAULT_CONFIG
-    if (url) {
-      try {
-        cfg = await this.loadConfig(url)
-      } catch (e) {
-        console.warn('环境配置加载失败，使用默认参数。', e)
-      }
-    }
-
+  async applyConfig(cfg) {
+    if (!cfg) return
     this.config = cfg
 
-    // url 有值时加载 HDR 环境贴图
-    if (url) {
-      const hdrPath = cfg.envLight.hdrPath ?? DEFAULT_HDR_PATH
+    // 配置中有 hdrPath 时加载 HDR 环境贴图
+    const hdrPath = cfg.envLight?.hdrPath
+    if (hdrPath) {
       await this.loadHdrEnvironment(hdrPath)
     }
 
     this.applyAllParams()
-
-    // 当没有环境贴图时，背景透明，覆盖 applyAllParams 的背景设置
     if (!cfg.envMapEnabled) {
       this.scene.background = null
     }
@@ -114,7 +102,7 @@ export class EnvironmentManager {
 
   /**
    * 应用全部参数（可反复调用，对齐 environment.js applyAllParams）。
-   * 必须先调用 applyFromUrl 完成初始化。
+   * 必须先调用 applyConfig 完成初始化。
    */
   applyAllParams() {
     const cfg = this.config
@@ -160,7 +148,7 @@ export class EnvironmentManager {
     this.renderer.toneMappingExposure = cfg.envLight.exposure
   }
 
-  /** 获取主方向光引用（可能为 null，applyFromUrl 后才有值） */
+  /** 获取主方向光引用（可能为 null，applyConfig 后才有值） */
   getDirLight() {
     return this.dirLight
   }
@@ -292,12 +280,4 @@ export class EnvironmentManager {
     })
   }
 
-  /** 从 URL 加载 env-config.json */
-  async loadConfig(url) {
-    const res = await fetch(url)
-    if (!res.ok) {
-      throw new Error(`环境配置加载失败: ${res.status} ${res.statusText}`)
-    }
-    return res.json()
-  }
 }

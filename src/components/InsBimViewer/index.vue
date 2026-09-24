@@ -25,8 +25,8 @@ export default defineComponent({
       loadingText: '',
       /** 材质配置器缓存实例（避免重复构建） */
       _matCfgInstance: null,
-      /** 当前材质配置 URL，供后续 loadGltfModels 自动应用 */
-      _materialConfigUrl: '',
+      /** 当前材质配置（配置数组），供后续 loadGltfModels 自动应用 */
+      _materialConfig: null,
     }
   },
   async mounted() {
@@ -113,8 +113,8 @@ export default defineComponent({
           const model = await loader.loadGltf(source.url, { geo: geoInfo, id: source.id, name: source.name })
 
           // 自动应用已缓存的材质配置
-          if (this._materialConfigUrl && this._matCfgInstance) {
-            await this._matCfgInstance.applyFromUrl(this._materialConfigUrl, model)
+          if (this._materialConfig && this._matCfgInstance) {
+            this._matCfgInstance.applyConfig(this._materialConfig, model)
           }
 
           // 应用显隐配置（visible 为 null/undefined 时默认显示）
@@ -134,29 +134,29 @@ export default defineComponent({
     // ========== 配置管理（整体替换） ==========
 
     /**
-     * 从 JSON 文件重新加载整套环境配置（天空/HDR/光照/曝光）。
-     * @param {string} url - env-config.json 路径
+     * 应用环境配置（天空/HDR/光照/曝光）。
+     * @param {Object} config - 配置对象
      */
-    async applyEnvConfig(url) {
-      await this.controller?.applyEnvConfig(url)
+    async applyEnvConfig(config) {
+      await this.controller?.applyEnvConfig(config)
     },
 
     /**
-     * 从 JSON 文件重新加载材质映射，并重新应用到所有已加载 GLB 模型。
+     * 应用材质映射配置，并重新应用到所有已加载 GLB 模型。
      * 后续调用 loadGltfModels 时也会自动应用此配置。
-     * @param {string} url - material-config.json 路径
+     * @param {Array} config - 配置数组
      */
-    async applyMaterialConfig(url) {
+    async applyMaterialConfig(config) {
       if (!this.controller) return
       if (!this._matCfgInstance) {
         this._matCfgInstance = new MaterialConfigurator(this.controller.renderer)
       }
-      this._materialConfigUrl = url
+      this._materialConfig = config
       // 重新应用到所有已加载的 GLB 模型
       const root = this.controller.getGltfModelLoader()?.root
       if (root) {
         for (const model of root.children) {
-          await this._matCfgInstance.applyFromUrl(url, model)
+          this._matCfgInstance.applyConfig(config, model)
         }
       }
     },

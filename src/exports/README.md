@@ -161,32 +161,32 @@ bimControls.renderLabels({
 
 ## 配置管理（整体替换）
 
-### `applyEnvConfig(url)`
+### `applyEnvConfig(config)`
 
-从 JSON 文件重新加载整套环境配置（天空/HDR/光照/曝光），覆盖当前所有环境参数。
+应用环境配置（天空/HDR/光照/曝光），覆盖当前所有环境参数。
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `url` | `string` | env-config.json 文件路径 |
+| `config` | `Object` | 配置对象 |
 
 ```js
-await bimControls.applyEnvConfig('./config/env-config.json')
-// 切换到夜景配置
-await bimControls.applyEnvConfig('./config/night-env.json')
+import envConfig from './config/env-config.js'
+bimControls.applyEnvConfig(envConfig)
 ```
 
 ---
 
-### `applyMaterialConfig(url)`
+### `applyMaterialConfig(config)`
 
-从 JSON 文件重新加载材质映射，并重新应用到所有已加载的 GLB 模型。后续调用 `loadGltfModels` 时也会自动应用此配置。
+应用材质映射配置，并重新应用到所有已加载的 GLB 模型。后续调用 `loadGltfModels` 时也会自动应用此配置。
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `url` | `string` | material-config.json 文件路径 |
+| `config` | `Array` | 配置数组 |
 
 ```js
-await bimControls.applyMaterialConfig('./config/material-config.json')
+import materialConfig from './config/material-config.js'
+bimControls.applyMaterialConfig(materialConfig)
 ```
 
 ---
@@ -586,10 +586,12 @@ export default {
             this.controler = controler
 
             // 1. 加载环境配置（天空/HDR/光照/曝光）
-            await bimControls.applyEnvConfig('./config/env-config.json')
+            import envConfig from './config/env-config.js'
+            await bimControls.applyEnvConfig(envConfig)
 
             // 2. 加载材质配置（自动应用到后续加载的模型）
-            await bimControls.applyMaterialConfig('./config/material-config.json')
+            import materialConfig from './config/material-config.js'
+            bimControls.applyMaterialConfig(materialConfig)
 
             // 3. 加载 3D Tiles 地形
             await bimControls.loadTilesets(this.tilesetSources)

@@ -25,6 +25,8 @@
 import { createApp } from "vue";
 import PartInfoLabel from "./PartInfoLabel.vue";
 import ModelTree from "./ModelTree.vue";
+import envConfig from "../../public/config/env-config.js";
+import materialConfig from "../../public/config/material-config.js";
 
 export default {
     components: {
@@ -48,8 +50,8 @@ export default {
                     url: "http://192.168.8.77:3000/data/gltf/rm/RM_.glb",
                 }
             ],
-            materialConfigUrl: "./config/material-config.json",
-            envConfigUrl: "./config/env-config.json",
+            materialConfig,
+            envConfig,
 
 
             controller: null, // 底层控制器实例
@@ -121,10 +123,10 @@ export default {
             if (!v) return;
 
             // 1. 环境配置
-            await v.applyEnvConfig(this.envConfigUrl);
+            v.applyEnvConfig(this.envConfig);
 
             // 2. 材质配置（先于模型加载，后续 loadGltfModels 会自动应用）
-            await v.applyMaterialConfig(this.materialConfigUrl);
+            v.applyMaterialConfig(this.materialConfig);
 
             // 3. 加载地形
             v.showLoading('正在加载地形…');

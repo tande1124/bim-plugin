@@ -14,8 +14,8 @@ import { MaterialConfigurator } from '../core/loaders/MaterialConfigurator'
 
 /** 材质配置器缓存实例（避免重复构建） */
 let _matCfgInstance = null
-/** 当前材质配置 URL，供后续 loadGltfModels 自动应用 */
-let _materialConfigUrl = ''
+/** 当前材质配置（配置数组），供后续 loadGltfModels 自动应用 */
+let _materialConfig = null
 
 /**
  * BIM 查看器外部操作接口
@@ -55,7 +55,7 @@ const bimControls = {
     const c = getViewer()
     if (!c || !sources?.length) return
     const loader = c.getGltfModelLoader()
-    const geoInfo = window.BizConfig?.glbConfig?.geoInfo
+    const geoInfo =  window.BizConfig?.glbConfig?.geoInfo 
     if (!geoInfo) {
       console.warn('未找到地理配准配置，跳过 geo 定位。')
     }
@@ -65,8 +65,8 @@ const bimControls = {
         const model = await loader.loadGltf(source.url, { geo: geoInfo, id: source.id, name: source.name })
 
         // 自动应用已缓存的材质配置
-        if (_materialConfigUrl && _matCfgInstance) {
-          await _matCfgInstance.applyFromUrl(_materialConfigUrl, model)
+        if (_materialConfig && _matCfgInstance) {
+          _matCfgInstance.applyConfig(_materialConfig, model)
         }
 
         // 应用显隐配置（visible 为 null/undefined 时默认显示）
@@ -94,30 +94,30 @@ const bimControls = {
   // ========== 配置管理（整体替换） ==========
 
   /**
-   * 从 JSON 文件重新加载整套环境配置（天空/HDR/光照/曝光）。
-   * @param {string} url - env-config.json 路径
+   * 应用环境配置（天空/HDR/光照/曝光）。
+   * @param {Object} config - 配置对象
    */
-  async applyEnvConfig(url) {
-    await getViewer()?.applyEnvConfig(url)
+  async applyEnvConfig(config) {
+    await getViewer()?.applyEnvConfig(config)
   },
-
+  
   /**
-   * 从 JSON 文件重新加载材质映射，并重新应用到所有已加载 GLB 模型。
+   * 应用材质映射配置，并重新应用到所有已加载 GLB 模型。
    * 后续调用 loadGltfModels 时也会自动应用此配置。
-   * @param {string} url - material-config.json 路径
+   * @param {Array} config - 配置数组
    */
-  async applyMaterialConfig(url) {
+  async applyMaterialConfig(config) {
     const c = getViewer()
     if (!c) return
     if (!_matCfgInstance) {
       _matCfgInstance = new MaterialConfigurator(c.renderer)
     }
-    _materialConfigUrl = url
+    _materialConfig = config
     // 重新应用到所有已加载的 GLB 模型
     const root = c.getGltfModelLoader()?.root
     if (root) {
       for (const model of root.children) {
-        await _matCfgInstance.applyFromUrl(url, model)
+        _matCfgInstance.applyConfig(config, model)
       }
     }
   },
