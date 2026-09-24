@@ -25,8 +25,6 @@
 import { createApp } from "vue";
 import PartInfoLabel from "./PartInfoLabel.vue";
 import ModelTree from "./ModelTree.vue";
-import envConfig from "../../public/config/env-config.js";
-import materialConfig from "../../public/config/material-config.js";
 
 export default {
     components: {
@@ -50,8 +48,8 @@ export default {
                     url: "http://192.168.8.77:3000/data/gltf/rm/RM_.glb",
                 }
             ],
-            materialConfig,
-            envConfig,
+            envConfig:window.BizConfig.envConfig,
+            materialConfig:window.BizConfig.materialConfig,
 
 
             controller: null, // 底层控制器实例
