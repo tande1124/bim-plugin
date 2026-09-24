@@ -180,6 +180,22 @@ export class GltfModelLoader {
   }
 
   /**
+   * 根据来源 ID 设置 GLB 模型的显隐。
+   * @param {string} sourceId - 模型来源 ID
+   * @param {boolean} visible - 是否可见
+   * @returns {boolean} 是否找到并设置成功
+   */
+  setVisibleById(sourceId, visible) {
+    for (const model of this.root.children) {
+      if (model.userData?.sourceId === sourceId) {
+        model.visible = visible
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
    * 用归一化设备坐标（NDC，x/y ∈ -1 ~ 1，原点在画布中心）对已加载的 GLB
    * 模型做射线拾取，未命中任何部件时返回 null。
    * @param {THREE.Camera} camera
@@ -313,6 +329,22 @@ export class GltfModelLoader {
     const distance = (maxDim / (2 * Math.tan(halfFov))) * 2.0
 
     this.deps.onFlyTo(center, distance, duration)
+  }
+
+  /**
+   * 根据来源 ID 飞行定位到指定 GLB 模型。
+   * @param {string} sourceId - 模型来源 ID
+   * @param {number} [duration=900] - 飞行动画时长（毫秒）
+   * @returns {boolean} 是否找到并飞行
+   */
+  flyToById(sourceId, duration = 900) {
+    for (const model of this.root.children) {
+      if (model.userData?.sourceId === sourceId) {
+        this.flyToObject(model, duration)
+        return true
+      }
+    }
+    return false
   }
 
   /** 清除当前选中，恢复原始材质并移除轮廓网格 */

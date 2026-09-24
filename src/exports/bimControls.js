@@ -25,7 +25,7 @@ const bimControls = {
 
   /**
    * 加载 3D Tiles 地形。
-   * @param {Array<{id: string, url: string, name?: string}>} sources
+   * @param {Array<{id: string, url: string, name?: string, visible?: boolean}>} sources
    */
   async loadTilesets(sources) {
     const c = getViewer()
@@ -37,12 +37,19 @@ const bimControls = {
       url: s.url,
     }))
     await c.loadScene(mapped)
+
+    // 加载完成后应用显隐配置（visible 为 null/undefined 时默认显示）
+    for (const s of sources) {
+      if (s.visible === false) {
+        c.setModelVisible(s.id, false, '3dtile')
+      }
+    }
   },
 
   /**
    * 依次加载 GLTF 模型。
    * 若之前调用过 applyMaterialConfig，会自动将材质配置应用到新加载的模型。
-   * @param {Array<{id: string, url: string}>} sources
+   * @param {Array<{id: string, url: string, name?: string, visible?: boolean}>} sources
    */
   async loadGltfModels(sources) {
     const c = getViewer()
@@ -61,6 +68,12 @@ const bimControls = {
         if (_materialConfigUrl && _matCfgInstance) {
           await _matCfgInstance.applyFromUrl(_materialConfigUrl, model)
         }
+
+        // 应用显隐配置（visible 为 null/undefined 时默认显示）
+        if (source.visible === false) {
+          model.visible = false
+        }
+
         console.log(`已加载模型: ${source.id} (${source.url})`)
       } catch (error) {
         console.error(`模型加载失败: ${source.url}`, error)
@@ -234,27 +247,25 @@ const bimControls = {
     getViewer()?.environment.controlEnvMapEnabled(enabled)
   },
 
-  /** 控制 3D Tiles 图层的显隐 */
-  setLayerVisible(sourceId, visible) {
-    getViewer()?.setLayerVisible(sourceId, visible)
+  /**
+   * 根据来源 ID 设置模型显隐。
+   * @param {string} id - 数据源 ID
+   * @param {boolean} visible - 是否可见
+   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+   * @returns {boolean}
+   */
+  setModelVisible(id, visible, type) {
+    return getViewer()?.setModelVisible(id, visible, type) ?? false
   },
 
   /**
-   * 根据来源 ID 移除指定的 3D Tiles 瓦片集。
-   * @param {string} id - 数据源 ID（对应 tilesetSources[].id）
+   * 根据来源 ID 移除模型。
+   * @param {string} id - 数据源 ID
+   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时尝试移除 3DTiles 和 GLB
    * @returns {boolean} 是否成功移除
    */
-  removeTileset(id) {
-    return getViewer()?.removeTileset(id) ?? false
-  },
-
-  /**
-   * 根据来源 ID 移除指定的 GLB 模型。
-   * @param {string} id - 模型来源 ID（对应 gltfSources[].id）
-   * @returns {boolean} 是否成功移除
-   */
-  removeGltfModel(id) {
-    return getViewer()?.removeGltfModel(id) ?? false
+  removeModel(id, type) {
+    return getViewer()?.removeModel(id, type) ?? false
   },
 
   /** 切换双相机透视渲染模式 */
@@ -269,6 +280,17 @@ const bimControls = {
    */
   setLabelVisible(type, visible) {
     getViewer()?.getLabelRenderer()?.setGroupVisible(type, visible)
+  },
+
+  /**
+   * 根据来源 ID 飞行定位到指定模型。
+   * @param {string} id - 数据源 ID
+   * @param {number} [duration=3000] - 飞行动画时长（毫秒）
+   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+   * @returns {boolean}
+   */
+  flyToModel(id, duration = 3000, type) {
+    return getViewer()?.flyToModel(id, duration, type) ?? false
   },
 
   /**

@@ -34,6 +34,7 @@ export default {
                 {
                     id: "rm-tileset",
                     name: "RM地形",
+                    visible: true,
                     url: 'http://192.168.8.77:3000/data/3dtiles/rm/tileset.json',
                 },
             ],
@@ -41,11 +42,13 @@ export default {
                 {
                     id: "rm-glb",
                     name: "RM模型",
+                    visible: true,
                     url: "http://192.168.8.77:3000/data/gltf/rm/RM_.glb",
                 },
                 {
                     id: "rm-model",
                     name: "隧道模型",
+                    visible: false,
                     url: "http://192.168.8.77:3000/data/gltf/rm/model.glb",
                 },
             ],
@@ -172,7 +175,7 @@ export default {
         },
         handleLayerToggle() {
             if (this.$refs.bimViewer) {
-                this.$refs.bimViewer.setLayerVisible("rm-tileset", this.tileShow);
+                this.$refs.bimViewer.setModelVisible("rm-tileset", this.tileShow);
             }
         },
         handleDualPassToggle() {

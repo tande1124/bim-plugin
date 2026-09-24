@@ -63,5 +63,10 @@
     "modelName": "RM_",
     "meshName": "2号导流洞工程",
     "matKey": "m13"
+  },
+    {
+    "modelName": "jfs-bim",
+    "meshName": "下水库坝后台阶消能明渠段结构_下水库坝_cf6aac6",
+    "matKey": "m11"
   }
 ]

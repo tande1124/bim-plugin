@@ -205,6 +205,27 @@ export class TileModelLoader {
     }
   }
 
+  /**
+   * 根据来源 ID 飞行定位到指定瓦片集。
+   * @param {string} sourceId - 数据源 ID
+   * @param {Function} flyToFn - 飞行函数 (center: THREE.Vector3, distance: number, duration: number)
+   * @param {number} [duration=3000] - 飞行动画时长（毫秒）
+   * @returns {boolean} 是否找到并飞行
+   */
+  flyToById(sourceId, flyToFn, duration = 3000) {
+    const boundingSphere = new THREE.Sphere()
+    for (const tr of this.tilesRenderers) {
+      if (tr.group.userData.sourceId === sourceId) {
+        if (tr.getBoundingSphere(boundingSphere)) {
+          flyToFn(boundingSphere.center, boundingSphere.radius * 2, duration)
+          return true
+        }
+        break
+      }
+    }
+    return false
+  }
+
   // ========== 状态查询 ==========
 
   /**

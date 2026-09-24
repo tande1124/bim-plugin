@@ -75,7 +75,7 @@ export default defineComponent({
 
     /**
      * 加载 3D Tiles 地形。
-     * @param {Array<{id: string, url: string, name?: string}>} sources
+     * @param {Array<{id: string, url: string, name?: string, visible?: boolean}>} sources
      */
     async loadTilesets(sources) {
       if (!this.controller || !sources?.length) return
@@ -86,12 +86,19 @@ export default defineComponent({
         url: s.url,
       }))
       await this.controller.loadScene(mapped)
+
+      // 加载完成后应用显隐配置（visible 为 null/undefined 时默认显示）
+      for (const s of sources) {
+        if (s.visible === false) {
+          this.controller.setModelVisible(s.id, false, '3dtile')
+        }
+      }
     },
 
     /**
      * 依次加载 GLTF 模型。
      * 若之前调用过 applyMaterialConfig，会自动将材质配置应用到新加载的模型。
-     * @param {Array<{id: string, url: string}>} sources
+     * @param {Array<{id: string, url: string, name?: string, visible?: boolean}>} sources
      */
     async loadGltfModels(sources) {
       if (!this.controller || !sources?.length) return
@@ -109,6 +116,12 @@ export default defineComponent({
           if (this._materialConfigUrl && this._matCfgInstance) {
             await this._matCfgInstance.applyFromUrl(this._materialConfigUrl, model)
           }
+
+          // 应用显隐配置（visible 为 null/undefined 时默认显示）
+          if (source.visible === false) {
+            model.visible = false
+          }
+
           console.log(`已加载模型: ${source.id} (${source.url})`)
           this.$emit('model-loaded', { id: source.id, url: source.url })
         } catch (error) {
@@ -279,21 +292,13 @@ export default defineComponent({
 
     
     /**
-     * 根据来源 ID 移除指定的 3D Tiles 瓦片集。
-     * @param {string} id - 数据源 ID（对应 tilesetSources[].id）
+     * 根据来源 ID 移除模型。
+     * @param {string} id - 数据源 ID
+     * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时尝试移除 3DTiles 和 GLB
      * @returns {boolean} 是否成功移除
      */
-    removeTileset(id) {
-      return this.controller?.removeTileset(id) ?? false
-    },
-
-    /**
-     * 根据来源 ID 移除指定的 GLB 模型。
-     * @param {string} id - 模型来源 ID（对应 gltfSources[].id）
-     * @returns {boolean} 是否成功移除
-     */
-    removeGltfModel(id) {
-      return this.controller?.removeGltfModel(id) ?? false
+    removeModel(id, type) {
+      return this.controller?.removeModel(id, type) ?? false
     },
 
     /** 控制环境贴图是否启用 */
@@ -301,14 +306,31 @@ export default defineComponent({
       this.controller?.environment.controlEnvMapEnabled(enabled)
     },
 
-    /** 控制3dtiles图层的显隐 */
-    setLayerVisible(sourceId, visible) {
-      this.controller?.setLayerVisible(sourceId, visible)
+    /**
+     * 根据来源 ID 设置模型显隐。
+     * @param {string} id - 数据源 ID
+     * @param {boolean} visible - 是否可见
+     * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+     * @returns {boolean}
+     */
+    setModelVisible(id, visible, type) {
+      return this.controller?.setModelVisible(id, visible, type) ?? false
     },
 
     /** 切换双相机透视渲染模式 */
     setDualPass(enabled) {
       this.controller?.setDualPass(enabled)
+    },
+
+    /**
+     * 根据来源 ID 飞行定位到指定模型。
+     * @param {string} id - 数据源 ID
+     * @param {number} [duration=3000] - 飞行动画时长（毫秒）
+     * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+     * @returns {boolean}
+     */
+    flyToModel(id, duration = 3000, type) {
+      return this.controller?.flyToModel(id, duration, type) ?? false
     },
 
     /**

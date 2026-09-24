@@ -222,31 +222,67 @@ export class BimViewerController {
     return this.gltfModelLoader
   }
 
+  
   /**
-   * 设置指定瓦片图层的显隐。
-   * @param {string} sourceId - 数据源 ID（如 'tileset-0'）
+   * 根据来源 ID 设置模型显隐。
+   * @param {string} id - 数据源 ID
    * @param {boolean} visible - 是否可见
+   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+   * @returns {boolean} 是否成功设置
    */
-  setLayerVisible(sourceId, visible) {
-    this.tileModelLoader.setLayerVisible(sourceId, visible)
+  setModelVisible(id, visible, type) {
+    if (type === '3dtile') {
+      this.tileModelLoader.setLayerVisible(id, visible)
+      return true
+    }
+    if (type === 'glb' || type === 'gltf') {
+      return this.gltfModelLoader.setVisibleById(id, visible)
+    }
+    // 未指定类型：两端都尝试
+    this.tileModelLoader.setLayerVisible(id, visible)
+    this.gltfModelLoader.setVisibleById(id, visible)
+    return true
   }
 
   /**
-   * 根据来源 ID 移除指定的 3D Tiles 瓦片集。
-   * @param {string} sourceId - 数据源 ID
-   * @returns {boolean}
+   * 根据来源 ID 移除模型。
+   * @param {string} id - 数据源 ID
+   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时尝试移除 3DTiles 和 GLB
+   * @returns {boolean} 是否成功移除
    */
-  removeTileset(sourceId) {
-    return this.tileModelLoader.removeById(sourceId)
+  removeModel(id, type) {
+    if (type === '3dtile') {
+      return this.tileModelLoader.removeById(id)
+    }
+    if (type === 'glb' || type === 'gltf') {
+      return this.gltfModelLoader.removeById(id)
+    }
+    // 未指定类型：两端都尝试
+    const a = this.tileModelLoader.removeById(id)
+    const b = this.gltfModelLoader.removeById(id)
+    return a || b
   }
 
   /**
-   * 根据来源 ID 移除指定的 GLB 模型。
-   * @param {string} sourceId - 模型来源 ID
-   * @returns {boolean}
+   * 根据来源 ID 飞行定位到指定模型。
+   * @param {string} id - 数据源 ID
+   * @param {number} [duration=3000] - 飞行动画时长（毫秒）
+   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+   * @returns {boolean} 是否成功飞行
    */
-  removeGltfModel(sourceId) {
-    return this.gltfModelLoader.removeById(sourceId)
+  flyToModel(id, duration = 3000, type) {
+    const flyTo = (center, distance, dur) => {
+      this.cameraManager.flyTo(center, distance / 12, dur)
+    }
+    if (type === '3dtile') {
+      return this.tileModelLoader.flyToById(id, flyTo, duration)
+    }
+    if (type === 'glb' || type === 'gltf') {
+      return this.gltfModelLoader.flyToById(id, duration)
+    }
+    // 未指定类型：先尝试 GLB，再尝试 3DTiles
+    if (this.gltfModelLoader.flyToById(id, duration)) return true
+    return this.tileModelLoader.flyToById(id, flyTo, duration)
   }
 
   /** 清除 GLB 部件高亮 */

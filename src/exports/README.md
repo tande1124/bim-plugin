@@ -79,11 +79,21 @@ methods: {
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `sources` | `Array<{id, url, name?}>` | 地形数据源列表 |
+| `sources` | `Array<{id, url, name?, visible?}>` | 地形数据源列表 |
+
+**sources 字段说明：**
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `id` | `string` | — | 数据源唯一标识 |
+| `url` | `string` | — | tileset.json 地址 |
+| `name` | `string` | `id` | 显示名称 |
+| `visible` | `boolean` | `true` | 加载后是否可见（`null`/`undefined` 视为 `true`） |
 
 ```js
 bimControls.loadTilesets([
-    { id: 'rm-tileset', url: 'http://server/data/3dtiles/rm/tileset.json' },
+    { id: 'rm-tileset', name: 'RM地形', url: 'http://server/data/3dtiles/rm/tileset.json' },
+    { id: 'bg-tileset', name: '背景地形', url: 'http://server/data/3dtiles/bg/tileset.json', visible: false },
 ])
 ```
 
@@ -95,11 +105,21 @@ bimControls.loadTilesets([
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `sources` | `Array<{id, url}>` | 模型数据源列表 |
+| `sources` | `Array<{id, url, name?, visible?}>` | 模型数据源列表 |
+
+**sources 字段说明：**
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `id` | `string` | — | 数据源唯一标识 |
+| `url` | `string` | — | GLB/GLTF 文件地址 |
+| `name` | `string` | — | 显示名称（用于模型树和路径展示） |
+| `visible` | `boolean` | `true` | 加载后是否可见（`null`/`undefined` 视为 `true`） |
 
 ```js
 bimControls.loadGltfModels([
-    { id: 'rm-glb', url: 'http://server/data/gltf/rm/RM_.glb' },
+    { id: 'rm-glb', name: 'RM模型', url: 'http://server/data/gltf/rm/RM_.glb' },
+    { id: 'rm-model', name: '隧道模型', url: 'http://server/data/gltf/rm/model.glb', visible: false },
 ])
 ```
 
@@ -375,47 +395,47 @@ bimControls.controlEnvEnabled(false)
 
 ---
 
-### `setLayerVisible(sourceId, visible)`
+### `setModelVisible(id, visible, type?)`
 
-控制 3D Tiles 图层的显隐。
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `sourceId` | `string` | 数据源 ID（加载时传入的 `id`） |
-| `visible` | `boolean` | 是否可见 |
-
-```js
-bimControls.setLayerVisible('rm-tileset', false)
-```
-
----
-
-### `removeTileset(id)`
-
-根据来源 ID 移除指定的 3D Tiles 瓦片集，释放相关资源。
+根据来源 ID 设置模型显隐，支持 3D Tiles 和 GLB/GLTF。
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `id` | `string` | 数据源 ID（加载时传入的 `id`） |
-| **返回** | `boolean` | 是否成功移除 |
+| `visible` | `boolean` | 是否可见 |
+| `type` | `'3dtile' \| 'glb' \| 'gltf'` | 可选，模型类型；省略时同时在两端查找 |
+| **返回** | `boolean` | 是否成功设置 |
 
 ```js
-bimControls.removeTileset('rm-tileset')
+// 控制 3D Tiles 显隐
+bimControls.setModelVisible('rm-tileset', false, '3dtile')
+
+// 控制 GLB 模型显隐
+bimControls.setModelVisible('rm-glb', false, 'glb')
+
+// 不指定类型，自动在两端查找
+bimControls.setModelVisible('rm-glb', true)
 ```
 
 ---
 
-### `removeGltfModel(id)`
+### `removeModel(id, type?)`
 
-根据来源 ID 移除指定的 GLB 模型，释放相关资源。若该模型有高亮状态会自动清除。
+根据来源 ID 移除模型，释放相关资源。
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `id` | `string` | 模型来源 ID（加载时传入的 `id`） |
+| `id` | `string` | 数据源 ID（加载时传入的 `id`） |
+| `type` | `'3dtile' \| 'glb' \| 'gltf'` | 可选，模型类型；省略时同时尝试移除 3DTiles 和 GLB |
 | **返回** | `boolean` | 是否成功移除 |
 
 ```js
-bimControls.removeGltfModel('rm-glb')
+// 移除指定类型的模型
+bimControls.removeModel('rm-tileset', '3dtile')
+bimControls.removeModel('rm-glb', 'glb')
+
+// 不指定类型，自动在两端查找
+bimControls.removeModel('rm-glb')
 ```
 
 ---
@@ -445,6 +465,30 @@ bimControls.setDualPass(true)
 
 ```js
 bimControls.setLabelVisible('label', false)
+```
+
+---
+
+### `flyToModel(id, duration?, type?)`
+
+根据来源 ID 飞行定位到指定模型。
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `id` | `string` | — | 数据源 ID（加载时传入的 `id`） |
+| `duration` | `number` | `3000` | 飞行动画时长（毫秒） |
+| `type` | `'3dtile' \| 'glb' \| 'gltf'` | — | 可选，模型类型；省略时先在 GLB 中查找，再在 3DTiles 中查找 |
+| **返回** | `boolean` | — | 是否成功飞行 |
+
+```js
+// 飞行到 3D Tiles
+bimControls.flyToModel('rm-tileset', 2000, '3dtile')
+
+// 飞行到 GLB 模型
+bimControls.flyToModel('rm-glb', 2000, 'glb')
+
+// 不指定类型，自动查找
+bimControls.flyToModel('rm-model')
 ```
 
 ---
