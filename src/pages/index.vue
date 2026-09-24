@@ -1,5 +1,5 @@
 <template>
-    <InsBimPlusViewer ref="bimViewer" @ready="onReady" @model-loaded="onModelLoaded" @error="onError"
+    <InsBimPlusViewer ref="bimViewer"  @ready="onReady" @model-loaded="onModelLoaded" @error="onError"
         @gltf-pick="onPartClick" @label-click="onLabelClick" />
     <div class="operation-container flex">
         <el-switch v-model="envShow" active-text="环境" @change="handleSceneEvent"></el-switch>
@@ -7,6 +7,8 @@
         <el-checkbox v-model="canansShow" @change="handleDualPassToggle">双透视</el-checkbox>
         <el-checkbox v-model="labelsVisible" @change="handleRenderLabels">标签</el-checkbox>
         <el-button  type="primary"  style="margin:5px 30px" size="small" @click="getModelInfo">模型信息</el-button>
+
+        <el-button  type="primary"  style="margin:5px 30px" size="small" @click="flyToTileset">地形飞行</el-button>
     </div>
     <div v-if="showModelTree" class="model-tree-panel">
         <div class="panel-header">
@@ -44,16 +46,12 @@ export default {
                     name: "RM模型",
                     visible: true,
                     url: "http://192.168.8.77:3000/data/gltf/rm/RM_.glb",
-                },
-                {
-                    id: "rm-model",
-                    name: "隧道模型",
-                    visible: false,
-                    url: "http://192.168.8.77:3000/data/gltf/rm/model.glb",
-                },
+                }
             ],
             materialConfigUrl: "./config/material-config.json",
             envConfigUrl: "./config/env-config.json",
+
+
             controller: null, // 底层控制器实例
             envShow: true, // 环境显示
             tileShow: true, // 地形显示
@@ -188,11 +186,16 @@ export default {
             this.$refs.bimViewer.setLabelVisible("label", this.labelsVisible);
         },
         getModelInfo() {
-            const id = this.gltfSources[1]?.id;
+            const id = this.gltfSources[0]?.id;
             if (!id || !this.$refs.bimViewer) return;
             this.modelTreeData = this.$refs.bimViewer.getModelTreeById(id);
             this.showModelTree = !!this.modelTreeData;
         },
+        flyToTileset() {
+            if (!this.$refs.bimViewer) return;
+            this.$refs.bimViewer.flyToModel("rm-tileset");
+        },
+        
     },
 };
 </script>

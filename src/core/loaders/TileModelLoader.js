@@ -208,16 +208,20 @@ export class TileModelLoader {
   /**
    * 根据来源 ID 飞行定位到指定瓦片集。
    * @param {string} sourceId - 数据源 ID
-   * @param {Function} flyToFn - 飞行函数 (center: THREE.Vector3, distance: number, duration: number)
+   * @param {Function} flyToFn - 飞行函数 (box: THREE.Box3, duration: number)
    * @param {number} [duration=3000] - 飞行动画时长（毫秒）
    * @returns {boolean} 是否找到并飞行
    */
-  flyToById(sourceId, flyToFn, duration = 3000) {
-    const boundingSphere = new THREE.Sphere()
+  flyToById(sourceId, flyToFn, duration = 5000) {
+    const box = new THREE.Box3()
     for (const tr of this.tilesRenderers) {
       if (tr.group.userData.sourceId === sourceId) {
-        if (tr.getBoundingSphere(boundingSphere)) {
-          flyToFn(boundingSphere.center, boundingSphere.radius * 2, duration)
+        if (tr.getBoundingBox(box)) {
+          // getBoundingBox 返回的是 group 局部空间的包围盒，
+          // 需要通过 group 的世界矩阵转换到场景坐标系
+          tr.group.updateMatrixWorld(true)
+          box.applyMatrix4(tr.group.matrixWorld)
+          flyToFn(box, duration)
           return true
         }
         break

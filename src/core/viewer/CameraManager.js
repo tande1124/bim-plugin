@@ -118,6 +118,51 @@ export class CameraManager {
   }
 
   /**
+   * 平滑飞行到指定包围盒位置（带动画）。
+   * 与 fitToBox 计算逻辑一致，但使用 flyTo 动画平滑过渡。
+   *
+   * @param {THREE.Box3} box - 目标包围盒（世界坐标）
+   * @param {number} [duration=1500] - 飞行动画时长（ms）
+   * @returns {boolean}
+   */
+  flyToBox(box, duration = 1500) {
+    if (box.isEmpty()) return false
+
+    const size = box.getSize(new THREE.Vector3())
+    const center = box.getCenter(new THREE.Vector3())
+    const maxDimension = Math.max(size.x, size.y, size.z)
+    const safeDimension = maxDimension > 0 ? maxDimension : 10
+
+    const halfFov = THREE.MathUtils.degToRad(this.camera.fov * 0.5)
+    const distance = safeDimension / (2 * Math.tan(halfFov))
+    const fitDistance = distance * 1.65
+
+    // 更新裁剪面和控制器限制（与 fitToBox 一致）
+    this.camera.near = Math.max(safeDimension / 500, 0.1)
+    this.camera.far = Math.max(safeDimension * 50, 5000)
+    this.camera.updateProjectionMatrix()
+    this.controls.minDistance = Math.max(safeDimension / 200, 1)
+    this.controls.maxDistance = Math.max(fitDistance * ZOOM_LIMITS.maxDistanceFactor, safeDimension)
+
+    // 计算目标相机位置（正上方视角，降低高度）
+    const offset = new THREE.Vector3(0, 1, 0).multiplyScalar(fitDistance * 0.5)
+    const targetPosition = center.clone().add(offset)
+
+    // 使用飞行动画
+    this.hasSettledView = true
+    const anim = this.flyAnimation
+    anim.active = true
+    anim.startTime = performance.now()
+    anim.duration = duration
+    anim.fromPosition.copy(this.camera.position)
+    anim.toPosition.copy(targetPosition)
+    anim.fromTarget.copy(this.controls.target)
+    anim.toTarget.copy(center)
+
+    return true
+  }
+
+  /**
    * 延迟触发相机自动聚焦（防抖 160ms）。
    * 用于 GLTF 加载等后续场景变更后自动重新聚焦。
    *

@@ -271,18 +271,19 @@ export class BimViewerController {
    * @returns {boolean} 是否成功飞行
    */
   flyToModel(id, duration = 3000, type) {
-    const flyTo = (center, distance, dur) => {
-      this.cameraManager.flyTo(center, distance / 12, dur)
+    // 3DTiles 飞行回调：直接传 Box3 给 flyToBox（带动画）
+    const flyToTileset = (box, dur) => {
+      this.cameraManager.flyToBox(box, dur)
     }
     if (type === '3dtile') {
-      return this.tileModelLoader.flyToById(id, flyTo, duration)
+      return this.tileModelLoader.flyToById(id, flyToTileset, duration)
     }
     if (type === 'glb' || type === 'gltf') {
       return this.gltfModelLoader.flyToById(id, duration)
     }
     // 未指定类型：先尝试 GLB，再尝试 3DTiles
     if (this.gltfModelLoader.flyToById(id, duration)) return true
-    return this.tileModelLoader.flyToById(id, flyTo, duration)
+    return this.tileModelLoader.flyToById(id, flyToTileset, duration)
   }
 
   /** 清除 GLB 部件高亮 */
