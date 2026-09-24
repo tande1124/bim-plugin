@@ -110,6 +110,8 @@ export class GltfModelLoader {
     // 地理配准：用 CGCS2000 坐标把模型定位到场景中
     if (geo) {
       await this.applyGeoReference(model, geo)
+      // 缓存配准参数，便于后续动态更新
+      model.userData.geoInfo = { ...geo }
     }
 
     this.root.add(model)
@@ -413,6 +415,58 @@ export class GltfModelLoader {
     const matrix = createGeoReferenceMatrix(params, ecefToScene)
     model.matrix.identity()
     model.applyMatrix4(matrix)
+  }
+
+  /**
+   * 动态更新指定模型的地理配准参数（无需重新加载 GLB）。
+   *
+   * 通过计算新旧变换矩阵的增量，直接更新模型世界矩阵，毫秒级完成。
+   *
+   * @param {string} sourceId - 模型来源 ID
+   * @param {Object} newGeoInfo - 新的地理配准参数
+   * @param {number} newGeoInfo.centralMeridianDeg - 中央子午线经度（度）
+   * @param {number} newGeoInfo.offsetX - 东坐标（米）
+   * @param {number} newGeoInfo.offsetY - 北坐标（米）
+   * @param {number} [newGeoInfo.offsetZ=0] - 高程（米）
+   * @returns {boolean} 是否成功更新
+   */
+  updateGeoOffset(sourceId, newGeoInfo) {
+    // 查找目标模型
+    let targetModel = null
+    for (const model of this.root.children) {
+      if (model.userData?.sourceId === sourceId) {
+        targetModel = model
+        break
+      }
+    }
+    if (!targetModel) {
+      console.warn(`[GltfModelLoader] 模型 "${sourceId}" 未找到。`)
+      return false
+    }
+
+    const oldGeoInfo = targetModel.userData.geoInfo
+    if (!oldGeoInfo) {
+      console.warn(`[GltfModelLoader] 模型 "${sourceId}" 无初始 geoInfo，无法更新。`)
+      return false
+    }
+
+    const ecefToScene = this.deps.getEcefToSceneTransform?.()
+    if (!ecefToScene) {
+      console.warn('[GltfModelLoader] ECEF → 场景变换不可用。')
+      return false
+    }
+
+    // 计算增量矩阵：newMatrix × inverse(oldMatrix)
+    const oldMatrix = createGeoReferenceMatrix(oldGeoInfo, ecefToScene)
+    const newMatrix = createGeoReferenceMatrix(newGeoInfo, ecefToScene)
+    const delta = newMatrix.multiply(oldMatrix.clone().invert())
+
+    // 应用增量到模型
+    targetModel.applyMatrix4(delta)
+
+    // 更新缓存
+    targetModel.userData.geoInfo = { ...newGeoInfo }
+    return true
   }
 
   // ========== 纹理质量增强 ==========

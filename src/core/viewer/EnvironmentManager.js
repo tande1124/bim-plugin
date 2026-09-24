@@ -81,16 +81,16 @@ export class EnvironmentManager {
 
   /**
    * 传入配置对象应用环境参数。
-   * 若配置中包含 envLight.hdrPath，会自动加载 HDR 环境贴图。
+   * 当 envMapEnabled 为 true 时自动加载 HDR 环境贴图（优先使用配置中的 hdrPath，否则使用默认路径）。
    * @param {Object} cfg - 环境配置对象
    */
   async applyConfig(cfg) {
     if (!cfg) return
     this.config = cfg
 
-    // 配置中有 hdrPath 时加载 HDR 环境贴图
-    const hdrPath = cfg.envLight?.hdrPath
-    if (hdrPath) {
+    // envMapEnabled 时加载 HDR 环境贴图
+    if (cfg.envMapEnabled) {
+      const hdrPath = cfg.envLight?.hdrPath ?? DEFAULT_HDR_PATH
       await this.loadHdrEnvironment(hdrPath)
     }
 

@@ -547,6 +547,37 @@ bimControls.flyToLabel(1, 2000)
 
 ---
 
+### `updateGeoOffset(id, newGeoInfo)`
+
+动态更新指定 GLB 模型的场景偏移配置（无需重新加载模型）。通过计算新旧变换矩阵的增量直接更新模型世界矩阵，毫秒级完成。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `id` | `string` | 模型来源 ID（对应 `gltfSources[].id`） |
+| `newGeoInfo` | `Object` | 新的地理配准参数 |
+| **返回** | `boolean` | 是否成功更新 |
+
+**newGeoInfo 字段说明：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `centralMeridianDeg` | `number` | 高斯-克吕格中央子午线经度（度） |
+| `offsetX` | `number` | 模型原点投影东坐标（米） |
+| `offsetY` | `number` | 模型原点投影北坐标（米） |
+| `offsetZ` | `number` | 模型原点高程（米），默认 `0` |
+
+```js
+// 微调模型位置（向东偏移 10 米）
+bimControls.updateGeoOffset('rm-glb', {
+    centralMeridianDeg: 99,
+    offsetX: 500010,   // 原值 500000，东移 10 米
+    offsetY: 3295000,
+    offsetZ: 2500,
+})
+```
+
+---
+
 ## 完整示例
 
 ```vue

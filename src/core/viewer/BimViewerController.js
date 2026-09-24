@@ -281,6 +281,16 @@ export class BimViewerController {
     return this.tileModelLoader.flyToById(id, flyToTileset, duration)
   }
 
+  /**
+   * 动态更新指定 GLB 模型的场景偏移配置（无需重新加载模型）。
+   * @param {string} id - 模型来源 ID
+   * @param {Object} newGeoInfo - 新的地理配准参数
+   * @returns {boolean} 是否成功更新
+   */
+  updateGeoOffset(id, newGeoInfo) {
+    return this.gltfModelLoader.updateGeoOffset(id, newGeoInfo)
+  }
+
   /** 清除 GLB 部件高亮 */
   clearGltfHighlight() {
     this.gltfModelLoader.clearHighlight()
