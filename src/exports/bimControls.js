@@ -130,6 +130,32 @@ const bimControls = {
     getViewer()?.applyCameraConfig(cfg)
   },
 
+  /**
+   * 获取当前相机位置和观察目标。
+   * 返回格式与 biz-config.js 的 camera 配置一致，可直接用于 applyCameraConfig。
+   * @returns {{ position: {x,y,z}, target: {x,y,z} } | null}
+   */
+  getCameraInfo() {
+    const c = getViewer()
+    if (!c) return null
+    const pos = c.cameraManager.camera.position
+    const tgt = c.cameraManager.controls.target
+    return {
+      position: { x: pos.x, y: pos.y, z: pos.z },
+      target: { x: tgt.x, y: tgt.y, z: tgt.z },
+    }
+  },
+
+  /**
+   * 回归视角。
+   * 若 biz-config.js 配置了 glbConfig.camera 则飞行到配置位置，
+   * 否则自动聚焦到已加载场景的包围盒中心。
+   * @param {number} [duration=1500] - 飞行动画时长（毫秒）
+   */
+  resetCamera(duration = 1500) {
+    getViewer()?.resetCamera(duration)
+  },
+
   // ========== 运行时细粒度调参 ==========
 
   /**

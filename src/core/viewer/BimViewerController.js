@@ -511,6 +511,28 @@ export class BimViewerController {
     this.cameraManager.hasSettledView = true
   }
 
+  /**
+   * 回归视角。
+   * 若 biz-config.js 配置了 glbConfig.camera 则飞行到配置位置，
+   * 否则自动聚焦到已加载场景的包围盒中心。
+   * @param {number} [duration=1500] - 飞行动画时长（毫秒）
+   */
+  resetCamera(duration = 1500) {
+    const cameraCfg = window.BizConfig?.glbConfig?.camera
+    if (cameraCfg) {
+      this.applyCameraConfig(cameraCfg)
+      return
+    }
+    // 无配置时聚焦场景包围盒
+    const box = new THREE.Box3()
+    if (!this.sceneBounds.isEmpty()) box.copy(this.sceneBounds)
+    const gltfBox = new THREE.Box3().setFromObject(this.gltfModelLoader.root)
+    if (!gltfBox.isEmpty()) box.union(gltfBox)
+    if (!box.isEmpty()) {
+      this.cameraManager.fitToBox(box)
+    }
+  }
+
   /** 按真实设备像素比渲染，高分屏上限 2x 保护性能 */
   getPreferredPixelRatio() {
     return THREE.MathUtils.clamp(window.devicePixelRatio || 1, 1, 2)

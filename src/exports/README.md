@@ -208,6 +208,45 @@ bimControls.applyCameraConfig({
 
 ---
 
+### `getCameraInfo()`
+
+获取当前相机位置和观察目标，返回格式与 `biz-config.js` 的 `camera` 配置一致，可直接用于 `applyCameraConfig`。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| **返回** | `Object \| null` | `{ position: {x,y,z}, target: {x,y,z} }` |
+
+```js
+const info = bimControls.getCameraInfo()
+console.log(info)
+// { position: { x: 0, y: 3000, z: 4000 }, target: { x: 0, y: 0, z: 0 } }
+
+// 保存当前视角，稍后恢复
+const savedView = bimControls.getCameraInfo()
+// ... 操作后恢复
+bimControls.applyCameraConfig(savedView)
+```
+
+---
+
+### `resetCamera(duration?)`
+
+回归视角。若 `biz-config.js` 配置了 `glbConfig.camera` 则飞行到配置位置，否则自动聚焦到已加载场景的包围盒中心。
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `duration` | `number` | `1500` | 飞行动画时长（毫秒） |
+
+```js
+// 回归初始视角
+bimControls.resetCamera()
+
+// 快速回归
+bimControls.resetCamera(500)
+```
+
+---
+
 ## 运行时细粒度调参
 
 ### `setEnvParam(key, value)`
