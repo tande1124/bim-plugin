@@ -6,7 +6,6 @@ import { CameraManager } from './CameraManager'
 import { GltfModelLoader } from '../loaders/GltfModelLoader'
 import { TileModelLoader } from '../loaders/TileModelLoader'
 import { LabelRenderer } from '../loaders/LabelRenderer'
-import { createEcefToSceneFromGeoInfo } from '../../utils/geo-coordinate'
 
 /**
  * BIM 查看器控制器。
@@ -93,7 +92,7 @@ export class BimViewerController {
         }
         // 只在首次 tileset 加载完成时自动定位相机
         if (!isFirst) return
-        const cameraCfg = window.BizConfig?.glbConfig?.camera
+        const cameraCfg = window.BizConfig?.sceneConfig?.cameraConfig
         if (cameraCfg) {
           this.applyCameraConfig(cameraCfg)
         } else if (!this.cameraManager.isViewSettled() && !this.sceneBounds.isEmpty()) {
@@ -475,18 +474,11 @@ export class BimViewerController {
 
   /**
    * 获取 ECEF → 场景变换矩阵。
-   * 优先从 3D Tiles 获取，无 3D Tiles 时用 biz-config.js 的 geoInfo 兜底。
+   * 从 3D Tiles 获取 ECEF → 场景变换矩阵。
    * @returns {THREE.Matrix4|null}
    */
   getEcefToSceneTransform() {
-    const fromTiles = this.tileModelLoader.getFirstTransform()
-    if (fromTiles) return fromTiles
-    // 兜底：从 geoInfo 配置反算
-    const geoInfo = window.BizConfig?.glbConfig?.geoInfo
-    if (geoInfo) {
-      return createEcefToSceneFromGeoInfo(geoInfo)
-    }
-    return null
+    return this.tileModelLoader.getFirstTransform() ?? null
   }
 
   /**
@@ -529,7 +521,7 @@ export class BimViewerController {
    * @param {number} [duration=3000] - 飞行动画时长（毫秒）
    */
   resetCamera(cameraConfig, duration = 3000) {
-    const cameraCfg = cameraConfig || window.BizConfig?.glbConfig?.camera
+    const cameraCfg = cameraConfig || window.BizConfig?.sceneConfig?.cameraConfig
     if (cameraCfg) {
       // 有配置：平滑飞行到目标位置
       const cam = this.cameraManager.camera

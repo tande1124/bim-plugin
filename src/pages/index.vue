@@ -1,16 +1,19 @@
 <template>
     <InsBimPlusViewer ref="bimViewer" @ready="onReady" @model-loaded="onModelLoaded" @error="onError"
         @gltf-pick="onPartClick" @label-click="onLabelClick" />
-    <div class="operation-container flex">
-        <el-switch v-model="envShow" active-text="环境" @change="handleSceneEvent"></el-switch>
-        <el-checkbox style="margin-left: 30px" v-model="tileShow" @change="handleLayerToggle">地形</el-checkbox>
-        <el-checkbox v-model="canansShow" @change="handleDualPassToggle">双透视</el-checkbox>
-        <el-checkbox v-model="labelsVisible" @change="handleRenderLabels">标签</el-checkbox>
-        <el-button type="primary" style="margin:5px 30px" size="small" @click="getModelInfo">模型信息</el-button>
-        <el-button type="primary" style="margin:5px 30px" size="small" @click="flyToTileset">定位地形</el-button>
-        <el-button type="primary" style="margin:5px 30px" size="small" @click="resetView">回归视角</el-button>
-
-
+    <div class="toolbar">
+        <div class="toolbar-group">
+            <el-switch v-model="envShow" active-text="环境" @change="handleSceneEvent" />
+            <el-checkbox v-model="tileShow" @change="handleLayerToggle">地形</el-checkbox>
+            <el-checkbox v-model="canansShow" @change="handleDualPassToggle">双透视</el-checkbox>
+            <el-checkbox v-model="labelsVisible" @change="handleRenderLabels">标签</el-checkbox>
+        </div>
+        <div class="toolbar-group">
+            <el-button type="primary" size="small" @click="getModelInfo">模型信息</el-button>
+            <el-button type="primary" size="small" @click="flyToTileset">定位地形</el-button>
+            <el-button type="primary" size="small" @click="resetView">回归视角</el-button>
+            <el-button type="primary" size="small" @click="modelOffset">模型偏移</el-button>
+        </div>
     </div>
     <div v-if="showModelTree" class="model-tree-panel">
         <div class="panel-header">
@@ -50,8 +53,8 @@ export default {
                     url: "http://192.168.8.77:3000/data/gltf/rm/RM_.glb",
                 }
             ],
-            envConfig: window.BizConfig.envConfig,
-            materialConfig: window.BizConfig.materialConfig,
+            envConfig: window.BizConfig?.sceneConfig?.envConfig,
+            materialConfig: window.BizConfig?.materialConfig,
 
 
             controller: null, // 底层控制器实例
@@ -205,6 +208,17 @@ export default {
             });
         },
 
+        modelOffset() {
+            if (!this.$refs.bimViewer) return;
+            this.$refs.bimViewer.setGltfGeoOrigin({
+                centralMeridianDeg: 99,
+                offsetX: 436200,
+                offsetY: 3282400,
+                offsetZ: 2000,
+                verticalScale: 1,
+            });
+        },
+
     },
 };
 </script>
@@ -218,6 +232,31 @@ body,
     margin: 0;
     padding: 0;
     overflow: hidden;
+}
+
+.toolbar {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    gap: 16px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    align-items: center;
+}
+
+.toolbar-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.toolbar-group+.toolbar-group {
+    padding-left: 16px;
+    border-left: 1px solid #dcdfe6;
 }
 
 .model-tree-panel {

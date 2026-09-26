@@ -170,8 +170,8 @@ bimControls.renderLabels({
 | `config` | `Object` | 配置对象 |
 
 ```js
-import envConfig from './config/env-config.js'
-bimControls.applyEnvConfig(envConfig)
+import sceneConfig from './config/bim-scene-config.js'
+bimControls.applyEnvConfig(sceneConfig.envConfig)
 ```
 
 ---
@@ -625,8 +625,8 @@ export default {
             this.controler = controler
 
             // 1. 加载环境配置（天空/HDR/光照/曝光）
-            import envConfig from './config/env-config.js'
-            await bimControls.applyEnvConfig(envConfig)
+            import sceneConfig from './config/bim-scene-config.js'
+            await bimControls.applyEnvConfig(sceneConfig.envConfig)
 
             // 2. 加载材质配置（自动应用到后续加载的模型）
             import materialConfig from './config/material-config.js'

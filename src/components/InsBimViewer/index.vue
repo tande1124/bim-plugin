@@ -103,10 +103,7 @@ export default defineComponent({
     async loadGltfModels(sources) {
       if (!this.controller || !sources?.length) return
       const loader = this.controller.getGltfModelLoader()
-      const geoInfo = window.BizConfig?.glbConfig?.geoInfo
-      if (!geoInfo) {
-        console.warn('未找到地理配准配置，跳过 geo 定位。')
-      }
+      const geoInfo = window.BizConfig?.sceneConfig?.geoInfo
 
       for (const source of sources) {
         try {
@@ -186,7 +183,7 @@ export default defineComponent({
 
     /**
      * 回归视角。
-     * 若 biz-config.js 配置了 glbConfig.camera 则飞行到配置位置，
+     * 若 biz-config.js 配置了 sceneConfig.cameraConfig 则飞行到配置位置，
      * 否则自动聚焦到已加载场景的包围盒中心。
      * @param {number} [duration=1500] - 飞行动画时长（毫秒）
      */

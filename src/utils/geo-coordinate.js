@@ -109,7 +109,7 @@ export function createEcefToSceneFallback(longitude, latitude, altitude = 0) {
 }
 
 /**
- * 从 biz-config.js 的 geoInfo 配置构建 ECEF → 场景变换矩阵（兜底方案）。
+ * 从 geoInfo 参数构建 ECEF → 场景变换矩阵（兆底方案）。
  *
  * 通过 CGCS2000 投影坐标反算原点经纬度，再构建 ENU 切平面坐标系。
  * 当没有 3D Tiles 提供变换矩阵时使用。

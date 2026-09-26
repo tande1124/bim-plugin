@@ -55,10 +55,7 @@ const bimControls = {
     const c = getViewer()
     if (!c || !sources?.length) return
     const loader = c.getGltfModelLoader()
-    const geoInfo =  window.BizConfig?.glbConfig?.geoInfo 
-    if (!geoInfo) {
-      console.warn('未找到地理配准配置，跳过 geo 定位。')
-    }
+    const geoInfo = window.BizConfig?.sceneConfig?.geoInfo
 
     for (const source of sources) {
       try {
