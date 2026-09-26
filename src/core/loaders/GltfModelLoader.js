@@ -110,8 +110,14 @@ export class GltfModelLoader {
     // 地理配准：用 CGCS2000 坐标把模型定位到场景中
     if (geo) {
       await this.applyGeoReference(model, geo)
-      // 缓存配准参数，便于后续动态更新
+    }
+    // 始终缓存配准参数（即使 applyGeoReference 因 ECEF 不可用而跳过，
+    // 也保存原始参数，以便后续 setGltfGeoOrigin 可用）
+    if (geo) {
       model.userData.geoInfo = { ...geo }
+      console.log('[GltfModelLoader] geoInfo 已存储:', model.name, model.userData.geoInfo)
+    } else {
+      console.warn('[GltfModelLoader] 未提供 geo 参数，跳过 geoInfo 存储。model:', model.name)
     }
 
     this.root.add(model)
@@ -437,12 +443,15 @@ export class GltfModelLoader {
       return false
     }
 
-    // 所有模型共享同一套 geoInfo，取第一个作为基准
-    const oldGeoInfo = models[0].userData?.geoInfo
-    if (!oldGeoInfo) {
-      console.warn('[GltfModelLoader] 模型无初始 geoInfo，无法更新。')
+    // 所有模型共享同一套 geoInfo，找到第一个有 geoInfo 的作为基准
+    const refModel = models.find((m) => m.userData?.geoInfo)
+    if (!refModel) {
+      console.warn('[GltfModelLoader] 无模型包含 geoInfo，无法更新。',
+        '当前模型数:', models.length,
+        'userData:', models.map((m) => ({ name: m.name, userData: m.userData })))
       return false
     }
+    const oldGeoInfo = refModel.userData.geoInfo
 
     const ecefToScene = this.deps.getEcefToSceneTransform?.()
     if (!ecefToScene) {
@@ -458,6 +467,8 @@ export class GltfModelLoader {
     // 统一应用到所有模型
     for (const model of models) {
       model.applyMatrix4(delta)
+      // 同步 position/quaternion/scale，防止 matrixAutoUpdate 在下一帧覆盖
+      model.matrix.decompose(model.position, model.quaternion, model.scale)
       model.userData.geoInfo = { ...newGeoInfo }
     }
     return true
