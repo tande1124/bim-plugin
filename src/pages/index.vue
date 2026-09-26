@@ -14,6 +14,7 @@
             <el-button type="primary" size="small" @click="resetView">回归视角</el-button>
             <el-button type="primary" size="small" @click="setSceneCoordinate">场景坐标配置</el-button>
             <el-button type="primary" size="small" @click="setModelMaterial">模型材质</el-button>
+            <el-button type="primary" size="small" @click="resetMaterial">重置材质</el-button>
         </div>
     </div>
     <div v-if="showModelTree" class="model-tree-panel">
@@ -223,6 +224,11 @@ export default {
         setModelMaterial() {
             if (!this.$refs.bimViewer) return;
             this.$refs.bimViewer.applyMaterialConfig(this.materialConfig);
+        },
+        // 测试根据名称设置材质
+        resetMaterial() {
+            if (!this.$refs.bimViewer) return;
+            this.$refs.bimViewer.setPartMaterial('泄洪洞工程', '');
         },
     },
 };

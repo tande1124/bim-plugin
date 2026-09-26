@@ -211,6 +211,17 @@ const bimControls = {
       return false
     }
     const part = info.object
+
+    // matKey 为空：重置回 GLB 原始材质
+    if (!matKey) {
+      part.traverse((c) => {
+        if (c.isMesh && c.userData._gltfOriginalMaterial) {
+          c.material = c.userData._gltfOriginalMaterial
+        }
+      })
+      return true
+    }
+
     if (typeof matKey === 'string') {
       const c = getViewer()
       if (!_matCfgInstance && c) {
@@ -222,6 +233,7 @@ const bimControls = {
       part.traverse((c) => { if (c.isMesh) c.material = mat })
       return true
     }
+
     part.traverse((c) => { if (c.isMesh) c.material = matKey })
     return true
   },

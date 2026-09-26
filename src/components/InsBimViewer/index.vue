@@ -268,8 +268,18 @@ export default defineComponent({
         return false
       }
       const part = info.object
+
+      // matKey 为空：重置回 GLB 原始材质
+      if (!matKey) {
+        part.traverse((c) => {
+          if (c.isMesh && c.userData._gltfOriginalMaterial) {
+            c.material = c.userData._gltfOriginalMaterial
+          }
+        })
+        return true
+      }
+
       if (typeof matKey === 'string') {
-        // 复用缓存的材质配置器实例
         if (!this._matCfgInstance) {
           this._matCfgInstance = new MaterialConfigurator(this.controller?.renderer)
         }
@@ -278,6 +288,7 @@ export default defineComponent({
         part.traverse((c) => { if (c.isMesh) c.material = mat })
         return true
       }
+
       part.traverse((c) => { if (c.isMesh) c.material = matKey })
       return true
     },

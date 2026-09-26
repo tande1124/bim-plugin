@@ -93,6 +93,11 @@ export class GltfModelLoader {
     model.name = model.name || 'gltf-model'
     this.enhanceTextures(model)
 
+    // 保存 GLB 原始材质（供 setPartMaterial 重置时恢复）
+    model.traverse((obj) => {
+      if (obj.isMesh) obj.userData._gltfOriginalMaterial = obj.material
+    })
+
     if (center) {
       const box = new THREE.Box3().setFromObject(model)
       if (!box.isEmpty()) {
