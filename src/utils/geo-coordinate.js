@@ -109,25 +109,25 @@ export function createEcefToSceneFallback(longitude, latitude, altitude = 0) {
 }
 
 /**
- * 从 geoInfo 参数构建 ECEF → 场景变换矩阵（兆底方案）。
+ * 从 geoOrigin 参数构建 ECEF → 场景变换矩阵（兆底方案）。
  *
  * 通过 CGCS2000 投影坐标反算原点经纬度，再构建 ENU 切平面坐标系。
  * 当没有 3D Tiles 提供变换矩阵时使用。
  *
- * @param {Object} geoInfo - geoInfo 配置对象
- * @param {number} geoInfo.centralMeridianDeg - 中央子午线经度（度）
- * @param {number} geoInfo.offsetX - 模型原点投影东坐标（米）
- * @param {number} geoInfo.offsetY - 模型原点投影北坐标（米）
- * @param {number} [geoInfo.offsetZ=0] - 模型原点高程（米）
+ * @param {Object} geoOrigin - geoOrigin 配置对象
+ * @param {number} geoOrigin.centralMeridianDeg - 中央子午线经度（度）
+ * @param {number} geoOrigin.offsetX - 模型原点投影东坐标（米）
+ * @param {number} geoOrigin.offsetY - 模型原点投影北坐标（米）
+ * @param {number} [geoOrigin.offsetZ=0] - 模型原点高程（米）
  * @returns {THREE.Matrix4}
  */
-export function createEcefToSceneFromGeoInfo(geoInfo) {
+export function createEcefToSceneFromGeoInfo(geoOrigin) {
   const { longitude, latitude } = gaussKrugerInverse(
-    geoInfo.offsetX,
-    geoInfo.offsetY,
-    geoInfo.centralMeridianDeg,
+    geoOrigin.offsetX,
+    geoOrigin.offsetY,
+    geoOrigin.centralMeridianDeg,
   )
-  return createEcefToSceneFallback(longitude, latitude, geoInfo.offsetZ ?? 0)
+  return createEcefToSceneFallback(longitude, latitude, geoOrigin.offsetZ ?? 0)
 }
 
 // ========== ECEF → 场景局部坐标 ==========

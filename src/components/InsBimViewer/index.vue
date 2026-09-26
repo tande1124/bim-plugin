@@ -103,11 +103,11 @@ export default defineComponent({
     async loadGltfModels(sources) {
       if (!this.controller || !sources?.length) return
       const loader = this.controller.getGltfModelLoader()
-      const geoInfo = window.BizConfig?.sceneConfig?.geoInfo
+      const geoOrigin = window.BizConfig?.sceneConfig?.geoOrigin
 
       for (const source of sources) {
         try {
-          const model = await loader.loadGltf(source.url, { geo: geoInfo, id: source.id, name: source.name })
+          const model = await loader.loadGltf(source.url, { geo: geoOrigin, id: source.id, name: source.name })
 
           // 自动应用已缓存的材质配置
           if (this._materialConfig && this._matCfgInstance) {
@@ -357,15 +357,17 @@ export default defineComponent({
 
     /**
      * 动态更新所有 GLB 模型的场景偏移配置（无需重新加载模型）。
-     * 通过计算新旧变换矩阵的增量直接更新模型世界矩阵，毫秒级完成。
+     * 首次设置（无 geoOrigin）时直接应用绝对配准矩阵；
+     * 已有 geoOrigin 时计算增量矩阵统一更新。仅影响 GLB，3D Tiles 不受影响。
      * @param {Object} newGeoInfo - 新的地理配准参数
      * @param {number} newGeoInfo.centralMeridianDeg - 中央子午线经度（度）
      * @param {number} newGeoInfo.offsetX - 东坐标（米）
      * @param {number} newGeoInfo.offsetY - 北坐标（米）
      * @param {number} [newGeoInfo.offsetZ=0] - 高程（米）
-     * @returns {boolean}
+     * @param {number} [newGeoInfo.verticalScale=1] - 垂直缩放比例
+     * @returns {Promise<boolean>}
      */
-    setGltfGeoOrigin(newGeoInfo) {
+    async setGltfGeoOrigin(newGeoInfo) {
       return this.controller?.setGltfGeoOrigin(newGeoInfo) ?? false
     },
 

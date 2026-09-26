@@ -12,7 +12,8 @@
             <el-button type="primary" size="small" @click="getModelInfo">模型信息</el-button>
             <el-button type="primary" size="small" @click="flyToTileset">定位地形</el-button>
             <el-button type="primary" size="small" @click="resetView">回归视角</el-button>
-            <el-button type="primary" size="small" @click="modelOffset">模型偏移</el-button>
+            <el-button type="primary" size="small" @click="setSceneCoordinate">场景坐标配置</el-button>
+            <el-button type="primary" size="small" @click="setModelMaterial">模型材质</el-button>
         </div>
     </div>
     <div v-if="showModelTree" class="model-tree-panel">
@@ -129,7 +130,7 @@ export default {
             v.applyEnvConfig(this.envConfig);
 
             // 2. 材质配置（先于模型加载，后续 loadGltfModels 会自动应用）
-            v.applyMaterialConfig(this.materialConfig);
+            // v.applyMaterialConfig(this.materialConfig);
 
             // 3. 加载地形
             v.showLoading('正在加载地形…');
@@ -208,9 +209,9 @@ export default {
             });
         },
 
-        modelOffset() {
+        async setSceneCoordinate() {
             if (!this.$refs.bimViewer) return;
-            this.$refs.bimViewer.setGltfGeoOrigin({
+            await this.$refs.bimViewer.setGltfGeoOrigin({
                 centralMeridianDeg: 99,
                 offsetX: 436200,
                 offsetY: 3282400,
@@ -219,6 +220,10 @@ export default {
             });
         },
 
+        setModelMaterial() {
+            if (!this.$refs.bimViewer) return;
+            this.$refs.bimViewer.applyMaterialConfig(this.materialConfig);
+        },
     },
 };
 </script>

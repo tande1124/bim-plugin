@@ -558,12 +558,17 @@ bimControls.flyToLabel(1, 2000)
 
 ### `setGltfGeoOrigin(newGeoInfo)`
 
-动态更新所有 GLB 模型的场景偏移配置（无需重新加载模型）。所有模型共享同一套地理配准参数，因此只计算一次增量矩阵，统一应用到全部模型，毫秒级完成。
+动态更新所有 GLB 模型的场景偏移配置（无需重新加载模型）。支持两种模式：
+
+- **首次设置**：模型加载时未传 geo 参数，直接应用绝对配准矩阵
+- **增量更新**：模型已有 geoOrigin 时，计算 delta 矩阵统一更新
+
+所有模型共享同一套地理配准参数，只计算一次矩阵，毫秒级完成。仅影响 GLB 模型，3D Tiles 不受影响。
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `newGeoInfo` | `Object` | 新的地理配准参数 |
-| **返回** | `boolean` | 是否成功更新 |
+| **返回** | `Promise<boolean>` | 是否成功更新 |
 
 **newGeoInfo 字段说明：**
 
@@ -573,14 +578,16 @@ bimControls.flyToLabel(1, 2000)
 | `offsetX` | `number` | 模型原点投影东坐标（米） |
 | `offsetY` | `number` | 模型原点投影北坐标（米） |
 | `offsetZ` | `number` | 模型原点高程（米），默认 `0` |
+| `verticalScale` | `number` | 垂直缩放比例，默认 `1` |
 
 ```js
-// 微调所有模型位置（向东偏移 10 米）
-bimControls.setGltfGeoOrigin({
+// 设置/更新模型地理位置（异步等待地形就绪）
+await bimControls.setGltfGeoOrigin({
     centralMeridianDeg: 99,
-    offsetX: 500010,   // 原值 500000，东移 10 米
-    offsetY: 3295000,
-    offsetZ: 2500,
+    offsetX: 436200,
+    offsetY: 3282400,
+    offsetZ: 2000,
+    verticalScale: 1,
 })
 ```
 

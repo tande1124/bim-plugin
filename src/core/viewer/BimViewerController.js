@@ -282,10 +282,12 @@ export class BimViewerController {
 
   /**
    * 动态更新所有 GLB 模型的场景偏移配置（无需重新加载模型）。
+   * 首次设置（无 geoOrigin）时直接应用绝对配准矩阵；
+   * 已有 geoOrigin 时计算增量矩阵统一更新。仅影响 GLB，3D Tiles 不受影响。
    * @param {Object} newGeoInfo - 新的地理配准参数
-   * @returns {boolean} 是否成功更新
+   * @returns {Promise<boolean>} 是否成功更新
    */
-  setGltfGeoOrigin(newGeoInfo) {
+  async setGltfGeoOrigin(newGeoInfo) {
     return this.gltfModelLoader.setGltfGeoOrigin(newGeoInfo)
   }
 

@@ -96,7 +96,10 @@ export class GltfModelLoader {
     if (center) {
       const box = new THREE.Box3().setFromObject(model)
       if (!box.isEmpty()) {
-        model.position.sub(box.getCenter(new THREE.Vector3()))
+        const centerOffset = box.getCenter(new THREE.Vector3())
+        model.position.sub(centerOffset)
+        // 缓存居中偏移，以便 setGltfGeoOrigin 首次设置时补偿
+        model.userData._centerOffset = centerOffset
       }
     }
 
@@ -114,10 +117,10 @@ export class GltfModelLoader {
     // 始终缓存配准参数（即使 applyGeoReference 因 ECEF 不可用而跳过，
     // 也保存原始参数，以便后续 setGltfGeoOrigin 可用）
     if (geo) {
-      model.userData.geoInfo = { ...geo }
-      console.log('[GltfModelLoader] geoInfo 已存储:', model.name, model.userData.geoInfo)
+      model.userData.geoOrigin = { ...geo }
+      console.log('[GltfModelLoader] geoOrigin 已存储:', model.name, model.userData.geoOrigin)
     } else {
-      console.warn('[GltfModelLoader] 未提供 geo 参数，跳过 geoInfo 存储。model:', model.name)
+      console.warn('[GltfModelLoader] 未提供 geo 参数，跳过 geoOrigin 存储。model:', model.name)
     }
 
     this.root.add(model)
@@ -421,55 +424,68 @@ export class GltfModelLoader {
     const matrix = createGeoReferenceMatrix(params, ecefToScene)
     model.matrix.identity()
     model.applyMatrix4(matrix)
+    model.matrix.decompose(model.position, model.quaternion, model.scale)
   }
 
   /**
    * 动态更新所有 GLB 模型的地理配准参数（无需重新加载）。
    *
-   * 所有模型共享同一套 geoInfo，因此只计算一次增量矩阵，
-   * 统一应用到全部模型，毫秒级完成。
+   * 两种模式：
+   * - 首次设置：模型无 geoOrigin 时，直接应用绝对配准矩阵（与 applyGeoReference 一致）
+   * - 增量更新：模型已有 geoOrigin 时，计算 delta = newMatrix × inverse(oldMatrix)，统一应用
+   *
+   * 所有模型共享同一套 geoOrigin，因此只计算一次矩阵，毫秒级完成。
+   * 仅影响 GLB 模型，3D Tiles 不受影响。
    *
    * @param {Object} newGeoInfo - 新的地理配准参数
    * @param {number} newGeoInfo.centralMeridianDeg - 中央子午线经度（度）
    * @param {number} newGeoInfo.offsetX - 东坐标（米）
    * @param {number} newGeoInfo.offsetY - 北坐标（米）
    * @param {number} [newGeoInfo.offsetZ=0] - 高程（米）
-   * @returns {boolean} 是否成功更新
+   * @param {number} [newGeoInfo.verticalScale=1] - 垂直缩放比例
+   * @returns {Promise<boolean>} 是否成功更新
    */
-  setGltfGeoOrigin(newGeoInfo) {
+  async setGltfGeoOrigin(newGeoInfo) {
     const models = this.root.children
     if (models.length === 0) {
       console.warn('[GltfModelLoader] 无已加载的模型。')
       return false
     }
 
-    // 所有模型共享同一套 geoInfo，找到第一个有 geoInfo 的作为基准
-    const refModel = models.find((m) => m.userData?.geoInfo)
-    if (!refModel) {
-      console.warn('[GltfModelLoader] 无模型包含 geoInfo，无法更新。',
-        '当前模型数:', models.length,
-        'userData:', models.map((m) => ({ name: m.name, userData: m.userData })))
-      return false
-    }
-    const oldGeoInfo = refModel.userData.geoInfo
-
+    // 等待 3D Tiles 就绪（与 applyGeoReference 一致）
+    await this.deps.whenTerrainReady?.()
     const ecefToScene = this.deps.getEcefToSceneTransform?.()
     if (!ecefToScene) {
       console.warn('[GltfModelLoader] ECEF → 场景变换不可用。')
       return false
     }
 
-    // 只计算一次增量矩阵：newMatrix × inverse(oldMatrix)
-    const oldMatrix = createGeoReferenceMatrix(oldGeoInfo, ecefToScene)
     const newMatrix = createGeoReferenceMatrix(newGeoInfo, ecefToScene)
-    const delta = newMatrix.multiply(oldMatrix.clone().invert())
+    const refModel = models.find((m) => m.userData?.geoOrigin)
 
-    // 统一应用到所有模型
-    for (const model of models) {
-      model.applyMatrix4(delta)
-      // 同步 position/quaternion/scale，防止 matrixAutoUpdate 在下一帧覆盖
-      model.matrix.decompose(model.position, model.quaternion, model.scale)
-      model.userData.geoInfo = { ...newGeoInfo }
+    if (refModel) {
+      // ── 增量更新：delta = newMatrix × inverse(oldMatrix) ──
+      const oldMatrix = createGeoReferenceMatrix(refModel.userData.geoOrigin, ecefToScene)
+      const delta = newMatrix.clone().multiply(oldMatrix.clone().invert())
+      for (const model of models) {
+        model.applyMatrix4(delta)
+        model.matrix.decompose(model.position, model.quaternion, model.scale)
+        model.userData.geoOrigin = { ...newGeoInfo }
+      }
+    } else {
+      // ── 首次设置：与 applyGeoReference 一致，需补偿加载时的居中偏移 ──
+      for (const model of models) {
+        model.matrix.identity()
+        // 补偿加载时 center=true 的居中偏移（在模型局部空间中恢复）
+        const centerOffset = model.userData._centerOffset
+        if (centerOffset) {
+          model.translateOnAxis(centerOffset, 1)
+        }
+        model.applyMatrix4(newMatrix)
+        model.matrix.decompose(model.position, model.quaternion, model.scale)
+        model.userData.geoOrigin = { ...newGeoInfo }
+        delete model.userData._centerOffset
+      }
     }
     return true
   }
