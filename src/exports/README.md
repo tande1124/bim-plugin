@@ -547,13 +547,12 @@ bimControls.flyToLabel(1, 2000)
 
 ---
 
-### `updateGeoOffset(id, newGeoInfo)`
+### `setGltfGeoOrigin(newGeoInfo)`
 
-动态更新指定 GLB 模型的场景偏移配置（无需重新加载模型）。通过计算新旧变换矩阵的增量直接更新模型世界矩阵，毫秒级完成。
+动态更新所有 GLB 模型的场景偏移配置（无需重新加载模型）。所有模型共享同一套地理配准参数，因此只计算一次增量矩阵，统一应用到全部模型，毫秒级完成。
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `id` | `string` | 模型来源 ID（对应 `gltfSources[].id`） |
 | `newGeoInfo` | `Object` | 新的地理配准参数 |
 | **返回** | `boolean` | 是否成功更新 |
 
@@ -567,8 +566,8 @@ bimControls.flyToLabel(1, 2000)
 | `offsetZ` | `number` | 模型原点高程（米），默认 `0` |
 
 ```js
-// 微调模型位置（向东偏移 10 米）
-bimControls.updateGeoOffset('rm-glb', {
+// 微调所有模型位置（向东偏移 10 米）
+bimControls.setGltfGeoOrigin({
     centralMeridianDeg: 99,
     offsetX: 500010,   // 原值 500000，东移 10 米
     offsetY: 3295000,

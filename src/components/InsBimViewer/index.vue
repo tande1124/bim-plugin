@@ -359,9 +359,8 @@ export default defineComponent({
     },
 
     /**
-     * 动态更新指定 GLB 模型的场景偏移配置（无需重新加载模型）。
+     * 动态更新所有 GLB 模型的场景偏移配置（无需重新加载模型）。
      * 通过计算新旧变换矩阵的增量直接更新模型世界矩阵，毫秒级完成。
-     * @param {string} id - 模型来源 ID（对应 gltfSources[].id）
      * @param {Object} newGeoInfo - 新的地理配准参数
      * @param {number} newGeoInfo.centralMeridianDeg - 中央子午线经度（度）
      * @param {number} newGeoInfo.offsetX - 东坐标（米）
@@ -369,8 +368,8 @@ export default defineComponent({
      * @param {number} [newGeoInfo.offsetZ=0] - 高程（米）
      * @returns {boolean}
      */
-    updateGeoOffset(id, newGeoInfo) {
-      return this.controller?.updateGeoOffset(id, newGeoInfo) ?? false
+    setGltfGeoOrigin(newGeoInfo) {
+      return this.controller?.setGltfGeoOrigin(newGeoInfo) ?? false
     },
 
     /**

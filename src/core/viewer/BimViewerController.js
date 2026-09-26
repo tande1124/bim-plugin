@@ -282,13 +282,12 @@ export class BimViewerController {
   }
 
   /**
-   * 动态更新指定 GLB 模型的场景偏移配置（无需重新加载模型）。
-   * @param {string} id - 模型来源 ID
+   * 动态更新所有 GLB 模型的场景偏移配置（无需重新加载模型）。
    * @param {Object} newGeoInfo - 新的地理配准参数
    * @returns {boolean} 是否成功更新
    */
-  updateGeoOffset(id, newGeoInfo) {
-    return this.gltfModelLoader.updateGeoOffset(id, newGeoInfo)
+  setGltfGeoOrigin(newGeoInfo) {
+    return this.gltfModelLoader.setGltfGeoOrigin(newGeoInfo)
   }
 
   /** 清除 GLB 部件高亮 */

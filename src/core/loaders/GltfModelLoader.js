@@ -418,11 +418,11 @@ export class GltfModelLoader {
   }
 
   /**
-   * 动态更新指定模型的地理配准参数（无需重新加载 GLB）。
+   * 动态更新所有 GLB 模型的地理配准参数（无需重新加载）。
    *
-   * 通过计算新旧变换矩阵的增量，直接更新模型世界矩阵，毫秒级完成。
+   * 所有模型共享同一套 geoInfo，因此只计算一次增量矩阵，
+   * 统一应用到全部模型，毫秒级完成。
    *
-   * @param {string} sourceId - 模型来源 ID
    * @param {Object} newGeoInfo - 新的地理配准参数
    * @param {number} newGeoInfo.centralMeridianDeg - 中央子午线经度（度）
    * @param {number} newGeoInfo.offsetX - 东坐标（米）
@@ -430,23 +430,17 @@ export class GltfModelLoader {
    * @param {number} [newGeoInfo.offsetZ=0] - 高程（米）
    * @returns {boolean} 是否成功更新
    */
-  updateGeoOffset(sourceId, newGeoInfo) {
-    // 查找目标模型
-    let targetModel = null
-    for (const model of this.root.children) {
-      if (model.userData?.sourceId === sourceId) {
-        targetModel = model
-        break
-      }
-    }
-    if (!targetModel) {
-      console.warn(`[GltfModelLoader] 模型 "${sourceId}" 未找到。`)
+  setGltfGeoOrigin(newGeoInfo) {
+    const models = this.root.children
+    if (models.length === 0) {
+      console.warn('[GltfModelLoader] 无已加载的模型。')
       return false
     }
 
-    const oldGeoInfo = targetModel.userData.geoInfo
+    // 所有模型共享同一套 geoInfo，取第一个作为基准
+    const oldGeoInfo = models[0].userData?.geoInfo
     if (!oldGeoInfo) {
-      console.warn(`[GltfModelLoader] 模型 "${sourceId}" 无初始 geoInfo，无法更新。`)
+      console.warn('[GltfModelLoader] 模型无初始 geoInfo，无法更新。')
       return false
     }
 
@@ -456,16 +450,16 @@ export class GltfModelLoader {
       return false
     }
 
-    // 计算增量矩阵：newMatrix × inverse(oldMatrix)
+    // 只计算一次增量矩阵：newMatrix × inverse(oldMatrix)
     const oldMatrix = createGeoReferenceMatrix(oldGeoInfo, ecefToScene)
     const newMatrix = createGeoReferenceMatrix(newGeoInfo, ecefToScene)
     const delta = newMatrix.multiply(oldMatrix.clone().invert())
 
-    // 应用增量到模型
-    targetModel.applyMatrix4(delta)
-
-    // 更新缓存
-    targetModel.userData.geoInfo = { ...newGeoInfo }
+    // 统一应用到所有模型
+    for (const model of models) {
+      model.applyMatrix4(delta)
+      model.userData.geoInfo = { ...newGeoInfo }
+    }
     return true
   }
 
