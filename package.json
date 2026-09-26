@@ -36,7 +36,6 @@
         "deploy:prod": "deploy-cli-service deploy --mode prod"
     },
     "dependencies": {
-        "proj4": "^2.21.0",
         "3d-tiles-renderer": "^0.4.6",
         "three": "^0.186.0"
     },

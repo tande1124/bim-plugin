@@ -122,7 +122,6 @@ export default defineComponent({
           console.log(`已加载模型: ${source.id} (${source.url})`)
           this.$emit('model-loaded', { id: source.id, url: source.url })
         } catch (error) {
-          this.$message.error(`模型加载失败: ${source.url}`, error)
           this.$emit('error', { type: 'gltf', error, id: source.id, url: source.url })
         }
       }
@@ -183,11 +182,14 @@ export default defineComponent({
 
     /**
      * 回归视角。
-     * 若 biz-config.js 配置了 sceneConfig.cameraConfig 则飞行到配置位置，
-     * 否则自动聚焦到已加载场景的包围盒中心。
-     * @param {number} [duration=1500] - 飞行动画时长（毫秒）
+     * 传入 cameraConfig 时平滑飞行到指定位置，否则优先读取 biz-config.js 配置，
+     * 均无配置时自动聚焦到已加载场景的包围盒中心。
+     * @param {Object} [cameraConfig] - 相机配置（可选）
+     * @param {{ x?: number, y?: number, z?: number }} [cameraConfig.position] - 相机位置
+     * @param {{ x?: number, y?: number, z?: number }} [cameraConfig.target] - 观察目标点
+     * @param {number} [duration=3000] - 飞行动画时长（毫秒）
      */
-    resetCamera(cameraConfig, duration =3000) {
+    resetCamera(cameraConfig, duration = 3000) {
       this.controller?.resetCamera(cameraConfig, duration)
     },
 

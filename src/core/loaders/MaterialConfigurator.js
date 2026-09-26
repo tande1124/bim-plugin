@@ -256,6 +256,8 @@ export class MaterialConfigurator {
   renderer
   /** ID → { type, idx } 映射表 */
   idMap = new Map()
+  /** matKey → 材质实例缓存（同一 key 复用同一实例，避免 GPU 资源重复创建） */
+  materialCache = new Map()
 
   /**
    * @param {THREE.WebGLRenderer} [renderer]
@@ -360,32 +362,45 @@ export class MaterialConfigurator {
   }
 
   /**
-   * 根据 matKey 创建材质实例。
+   * 根据 matKey 获取材质实例（缓存复用）。
+   *
+   * 同一 matKey 始终返回同一实例，多个 mesh 共享引用，
+   * 避免重复创建材质和纹理导致的 GPU 内存暴涨。
    *
    * @param {string} matKey
    * @returns {THREE.Material | Object | null}
    */
   getMaterialByKey(matKey) {
+    // 命中缓存直接返回
+    if (this.materialCache.has(matKey)) {
+      return this.materialCache.get(matKey)
+    }
+
+    let mat = null
+
     // 优先按 ID 格式查找（材质编辑器导出的 "mN" 格式）
     const idEntry = this.idMap.get(matKey)
     if (idEntry) {
-      return this.createMaterial(idEntry.type, idEntry.idx)
+      mat = this.createMaterial(idEntry.type, idEntry.idx)
+    } else {
+      // 回退到 type_idx 格式
+      const sepIdx = matKey.lastIndexOf('_')
+      if (sepIdx >= 0) {
+        const type = matKey.slice(0, sepIdx)
+        const idx = parseInt(matKey.slice(sepIdx + 1), 10)
+        if (!isNaN(idx)) {
+          mat = this.createMaterial(type, idx)
+        }
+      }
     }
 
-    // 回退到 type_idx 格式
-    const sepIdx = matKey.lastIndexOf('_')
-    if (sepIdx < 0) return null
-
-    const type = matKey.slice(0, sepIdx)
-    const idx = parseInt(matKey.slice(sepIdx + 1), 10)
-    if (isNaN(idx)) return null
-
-    return this.createMaterial(type, idx)
+    if (mat) this.materialCache.set(matKey, mat)
+    return mat
   }
 
   /**
-   * 按类型和索引创建材质实例。
-   * 每次调用返回新实例（clone 语义），可安全赋给不同网格。
+   * 按类型和索引创建材质实例（底层工厂方法）。
+   * 每次调用返回新实例。上层应优先使用 getMaterialByKey（带缓存）。
    *
    * @param {string} type
    * @param {number} idx
@@ -420,9 +435,18 @@ export class MaterialConfigurator {
     return this.lib
   }
 
-  /** 替换整个材质库（用于从外部导入材质定义） */
+  /** 替换整个材质库（用于从外部导入材质定义），同时清除已缓存的材质实例 */
   setLibrary(lib) {
     Object.assign(this.lib, lib)
     this.buildIdMap()
+    this.clearCache()
+  }
+
+  /** 清除材质实例缓存（释放 GPU 资源，下次 getMaterialByKey 会重新创建） */
+  clearCache() {
+    for (const mat of this.materialCache.values()) {
+      if (mat && typeof mat.dispose === 'function') mat.dispose()
+    }
+    this.materialCache.clear()
   }
 }
