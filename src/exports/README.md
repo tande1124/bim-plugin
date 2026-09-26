@@ -229,20 +229,29 @@ bimControls.applyCameraConfig(savedView)
 
 ---
 
-### `resetCamera(duration?)`
+### `resetCamera(cameraConfig?, duration?)`
 
-回归视角。若 `biz-config.js` 配置了 `glbConfig.camera` 则飞行到配置位置，否则自动聚焦到已加载场景的包围盒中心。
+回归视角。传入 cameraConfig 时平滑飞行到指定位置，否则优先读取 `biz-config.js` 配置，均无配置时自动聚焦到已加载场景的包围盒中心。
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `duration` | `number` | `1500` | 飞行动画时长（毫秒） |
+| `cameraConfig` | `Object` | — | 相机配置（可选） |
+| `cameraConfig.position` | `{ x, y, z }` | — | 相机位置 |
+| `cameraConfig.target` | `{ x, y, z }` | — | 观察目标点 |
+| `duration` | `number` | `3000` | 飞行动画时长（毫秒） |
 
 ```js
-// 回归初始视角
+// 回归初始视角（默认 3 秒平滑飞行）
 bimControls.resetCamera()
 
-// 快速回归
-bimControls.resetCamera(500)
+// 飞行到指定位置
+bimControls.resetCamera({
+    position: { x: -4166, y: 2500, z: 5035 },
+    target: { x: 0, y: 0, z: 0 },
+})
+
+// 自定义飞行时长
+bimControls.resetCamera(null, 1000)
 ```
 
 ---

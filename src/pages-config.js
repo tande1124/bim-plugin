@@ -2,11 +2,11 @@
 
 module.exports = [
     // 测试使用
-    // {
-    //     path: '/index',
-    //     component: () => import('@biz/pages/index'),
-    //     meta: {
-    //         title: 'BIM',
-    //     }
-    // }
+    {
+        path: '/index',
+        component: () => import('@biz/pages/index'),
+        meta: {
+            title: 'BIM',
+        }
+    }
 ]

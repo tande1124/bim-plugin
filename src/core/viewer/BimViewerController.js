@@ -521,23 +521,52 @@ export class BimViewerController {
 
   /**
    * 回归视角。
-   * 若 biz-config.js 配置了 glbConfig.camera 则飞行到配置位置，
-   * 否则自动聚焦到已加载场景的包围盒中心。
-   * @param {number} [duration=1500] - 飞行动画时长（毫秒）
+   * 传入 cameraConfig 时平滑飞行到指定位置，否则优先读取 biz-config.js 配置，
+   * 均无配置时自动聚焦到已加载场景的包围盒中心。
+   * @param {Object} [cameraConfig] - 相机配置（可选）
+   * @param {{ x?: number, y?: number, z?: number }} [cameraConfig.position] - 相机位置
+   * @param {{ x?: number, y?: number, z?: number }} [cameraConfig.target] - 观察目标点
+   * @param {number} [duration=3000] - 飞行动画时长（毫秒）
    */
-  resetCamera(duration = 1500) {
-    const cameraCfg = window.BizConfig?.glbConfig?.camera
+  resetCamera(cameraConfig, duration = 3000) {
+    const cameraCfg = cameraConfig || window.BizConfig?.glbConfig?.camera
     if (cameraCfg) {
-      this.applyCameraConfig(cameraCfg)
+      // 有配置：平滑飞行到目标位置
+      const cam = this.cameraManager.camera
+      const controls = this.cameraManager.controls
+      const toPosition = cameraCfg.position
+        ? new THREE.Vector3(
+            cameraCfg.position.x ?? cam.position.x,
+            cameraCfg.position.y ?? cam.position.y,
+            cameraCfg.position.z ?? cam.position.z,
+          )
+        : cam.position.clone()
+      const toTarget = cameraCfg.target
+        ? new THREE.Vector3(
+            cameraCfg.target.x ?? controls.target.x,
+            cameraCfg.target.y ?? controls.target.y,
+            cameraCfg.target.z ?? controls.target.z,
+          )
+        : controls.target.clone()
+
+      this.cameraManager.hasSettledView = true
+      const anim = this.cameraManager.flyAnimation
+      anim.active = true
+      anim.startTime = performance.now()
+      anim.duration = duration
+      anim.fromPosition.copy(cam.position)
+      anim.toPosition.copy(toPosition)
+      anim.fromTarget.copy(controls.target)
+      anim.toTarget.copy(toTarget)
       return
     }
-    // 无配置时聚焦场景包围盒
+    // 无配置：平滑飞行到场景包围盒中心
     const box = new THREE.Box3()
     if (!this.sceneBounds.isEmpty()) box.copy(this.sceneBounds)
     const gltfBox = new THREE.Box3().setFromObject(this.gltfModelLoader.root)
     if (!gltfBox.isEmpty()) box.union(gltfBox)
     if (!box.isEmpty()) {
-      this.cameraManager.fitToBox(box)
+      this.cameraManager.flyToBox(box, duration)
     }
   }
 

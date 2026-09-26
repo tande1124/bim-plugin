@@ -190,8 +190,8 @@ export default defineComponent({
      * 否则自动聚焦到已加载场景的包围盒中心。
      * @param {number} [duration=1500] - 飞行动画时长（毫秒）
      */
-    resetCamera(duration = 1500) {
-      this.controller?.resetCamera(duration)
+    resetCamera(cameraConfig, duration =3000) {
+      this.controller?.resetCamera(cameraConfig, duration)
     },
 
     // ========== 运行时细粒度调参 ==========

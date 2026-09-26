@@ -1,14 +1,16 @@
 <template>
-    <InsBimPlusViewer ref="bimViewer"  @ready="onReady" @model-loaded="onModelLoaded" @error="onError"
+    <InsBimPlusViewer ref="bimViewer" @ready="onReady" @model-loaded="onModelLoaded" @error="onError"
         @gltf-pick="onPartClick" @label-click="onLabelClick" />
     <div class="operation-container flex">
         <el-switch v-model="envShow" active-text="环境" @change="handleSceneEvent"></el-switch>
         <el-checkbox style="margin-left: 30px" v-model="tileShow" @change="handleLayerToggle">地形</el-checkbox>
         <el-checkbox v-model="canansShow" @change="handleDualPassToggle">双透视</el-checkbox>
         <el-checkbox v-model="labelsVisible" @change="handleRenderLabels">标签</el-checkbox>
-        <el-button  type="primary"  style="margin:5px 30px" size="small" @click="getModelInfo">模型信息</el-button>
+        <el-button type="primary" style="margin:5px 30px" size="small" @click="getModelInfo">模型信息</el-button>
+        <el-button type="primary" style="margin:5px 30px" size="small" @click="flyToTileset">定位地形</el-button>
+        <el-button type="primary" style="margin:5px 30px" size="small" @click="resetView">回归视角</el-button>
 
-        <el-button  type="primary"  style="margin:5px 30px" size="small" @click="flyToTileset">地形飞行</el-button>
+
     </div>
     <div v-if="showModelTree" class="model-tree-panel">
         <div class="panel-header">
@@ -48,8 +50,8 @@ export default {
                     url: "http://192.168.8.77:3000/data/gltf/rm/RM_.glb",
                 }
             ],
-            envConfig:window.BizConfig.envConfig,
-            materialConfig:window.BizConfig.materialConfig,
+            envConfig: window.BizConfig.envConfig,
+            materialConfig: window.BizConfig.materialConfig,
 
 
             controller: null, // 底层控制器实例
@@ -195,7 +197,14 @@ export default {
             if (!this.$refs.bimViewer) return;
             this.$refs.bimViewer.flyToModel("rm-tileset");
         },
-        
+        resetView() {
+            if (!this.$refs.bimViewer) return;
+            this.$refs.bimViewer.resetCamera({
+                position: { x: -4166.70, y: 2500.09, z: 5035.86 },
+                target: { x: 0.00, y: 0.00, z: 0.00 }
+            });
+        },
+
     },
 };
 </script>
