@@ -50,8 +50,11 @@ const bimControls = {
    * 依次加载 GLTF 模型。
    * 若之前调用过 applyMaterialConfig，会自动将材质配置应用到新加载的模型。
    * @param {Array<{id: string, url: string, name?: string, visible?: boolean}>} sources
+   * @param {Object} [callbacks] - 可选回调（供 Vue 组件注入 $emit）
+   * @param {Function} [callbacks.onModelLoaded] - 单个模型加载成功 (id, url)
+   * @param {Function} [callbacks.onError] - 单个模型加载失败 (error, id, url)
    */
-  async loadGltfModels(sources) {
+  async loadGltfModels(sources, callbacks) {
     const c = getViewer()
     if (!c || !sources?.length) return
     const loader = c.getGltfModelLoader()
@@ -71,9 +74,17 @@ const bimControls = {
           model.visible = false
         }
 
-        console.log(`已加载模型: ${source.id} (${source.url})`)
+        if (callbacks?.onModelLoaded) {
+          callbacks.onModelLoaded(source.id, source.url)
+        } else {
+          console.log(`已加载模型: ${source.id} (${source.url})`)
+        }
       } catch (error) {
-        console.error(`模型加载失败: ${source.url}`, error)
+        if (callbacks?.onError) {
+          callbacks.onError(error, source.id, source.url)
+        } else {
+          console.error(`模型加载失败: ${source.url}`, error)
+        }
       }
     }
   },
@@ -175,6 +186,14 @@ const bimControls = {
     }
     obj[parts.at(-1)] = value
     env.applyAllParams()
+  },
+
+  /**
+   * 返回当前环境配置对象（只读快照）。
+   * @returns {Object|null}
+   */
+  getEnvConfig() {
+    return getViewer()?.environment?.getConfig() ?? null
   },
 
 

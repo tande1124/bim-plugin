@@ -12,7 +12,7 @@
 <script>
 import { defineComponent, markRaw } from 'vue'
 import { BimViewerController } from '../../core/viewer/BimViewerController'
-import { MaterialConfigurator } from '../../core/loaders/MaterialConfigurator'
+import { bimControls } from '../../exports/bimControls'
 import { registerViewer, unregisterViewer } from '../../exports/internal/viewerRegistry'
 
 export default defineComponent({
@@ -23,10 +23,6 @@ export default defineComponent({
       controller: null,
       loading: false,
       loadingText: '',
-      /** 材质配置器缓存实例（避免重复构建） */
-      _matCfgInstance: null,
-      /** 当前材质配置（配置数组），供后续 loadGltfModels 自动应用 */
-      _materialConfig: null,
     }
   },
   async mounted() {
@@ -77,22 +73,8 @@ export default defineComponent({
      * 加载 3D Tiles 地形。
      * @param {Array<{id: string, url: string, name?: string, visible?: boolean}>} sources
      */
-    async loadTilesets(sources) {
-      if (!this.controller || !sources?.length) return
-      const mapped = sources.map((s) => ({
-        id: s.id,
-        name: s.name || s.id,
-        kind: 'terrain',
-        url: s.url,
-      }))
-      await this.controller.loadScene(mapped)
-
-      // 加载完成后应用显隐配置（visible 为 null/undefined 时默认显示）
-      for (const s of sources) {
-        if (s.visible === false) {
-          this.controller.setModelVisible(s.id, false, '3dtile')
-        }
-      }
+    loadTilesets(sources) {
+      return bimControls.loadTilesets(sources)
     },
 
     /**
@@ -100,31 +82,15 @@ export default defineComponent({
      * 若之前调用过 applyMaterialConfig，会自动将材质配置应用到新加载的模型。
      * @param {Array<{id: string, url: string, name?: string, visible?: boolean}>} sources
      */
-    async loadGltfModels(sources) {
-      if (!this.controller || !sources?.length) return
-      const loader = this.controller.getGltfModelLoader()
-      const geoOrigin = window.BizConfig?.sceneConfig?.geoOrigin
-
-      for (const source of sources) {
-        try {
-          const model = await loader.loadGltf(source.url, { geo: geoOrigin, id: source.id, name: source.name })
-
-          // 自动应用已缓存的材质配置
-          if (this._materialConfig && this._matCfgInstance) {
-            this._matCfgInstance.applyConfig(this._materialConfig, model)
-          }
-
-          // 应用显隐配置（visible 为 null/undefined 时默认显示）
-          if (source.visible === false) {
-            model.visible = false
-          }
-
-          console.log(`已加载模型: ${source.id} (${source.url})`)
-          this.$emit('model-loaded', { id: source.id, url: source.url })
-        } catch (error) {
-          this.$emit('error', { type: 'gltf', error, id: source.id, url: source.url })
-        }
-      }
+    loadGltfModels(sources) {
+      return bimControls.loadGltfModels(sources, {
+        onModelLoaded: (id, url) => {
+          this.$emit('model-loaded', { id, url })
+        },
+        onError: (error, id, url) => {
+          this.$emit('error', { type: 'gltf', error, id, url })
+        },
+      })
     },
 
     // ========== 配置管理（整体替换） ==========
@@ -134,7 +100,7 @@ export default defineComponent({
      * @param {Object} config - 配置对象
      */
     async applyEnvConfig(config) {
-      await this.controller?.applyEnvConfig(config)
+      await bimControls.applyEnvConfig(config)
     },
 
     /**
@@ -142,19 +108,8 @@ export default defineComponent({
      * 后续调用 loadGltfModels 时也会自动应用此配置。
      * @param {Array} config - 配置数组
      */
-    async applyMaterialConfig(config) {
-      if (!this.controller) return
-      if (!this._matCfgInstance) {
-        this._matCfgInstance = new MaterialConfigurator(this.controller.renderer)
-      }
-      this._materialConfig = config
-      // 重新应用到所有已加载的 GLB 模型
-      const root = this.controller.getGltfModelLoader()?.root
-      if (root) {
-        for (const model of root.children) {
-          this._matCfgInstance.applyConfig(config, model)
-        }
-      }
+    applyMaterialConfig(config) {
+      bimControls.applyMaterialConfig(config)
     },
 
     /**
@@ -162,7 +117,7 @@ export default defineComponent({
      * @param {{ position?: {x,y,z}, target?: {x,y,z} }} cfg
      */
     applyCameraConfig(cfg) {
-      this.controller?.applyCameraConfig(cfg)
+      bimControls.applyCameraConfig(cfg)
     },
 
     /**
@@ -171,13 +126,7 @@ export default defineComponent({
      * @returns {{ position: {x,y,z}, target: {x,y,z} } | null}
      */
     getCameraInfo() {
-      if (!this.controller) return null
-      const pos = this.controller.cameraManager.camera.position
-      const tgt = this.controller.cameraManager.controls.target
-      return {
-        position: { x: pos.x, y: pos.y, z: pos.z },
-        target: { x: tgt.x, y: tgt.y, z: tgt.z },
-      }
+      return bimControls.getCameraInfo()
     },
 
     /**
@@ -190,7 +139,7 @@ export default defineComponent({
      * @param {number} [duration=3000] - 飞行动画时长（毫秒）
      */
     resetCamera(cameraConfig, duration = 3000) {
-      this.controller?.resetCamera(cameraConfig, duration)
+      bimControls.resetCamera(cameraConfig, duration)
     },
 
     // ========== 运行时细粒度调参 ==========
@@ -202,16 +151,7 @@ export default defineComponent({
      * @param {*} value
      */
     setEnvParam(key, value) {
-      const env = this.controller?.environment
-      if (!env?.config) return
-      const parts = key.split('.')
-      let obj = env.config
-      for (let i = 0; i < parts.length - 1; i++) {
-        obj = obj[parts[i]]
-        if (!obj) return
-      }
-      obj[parts.at(-1)] = value
-      env.applyAllParams()
+      bimControls.setEnvParam(key, value)
     },
 
     /**
@@ -219,7 +159,7 @@ export default defineComponent({
      * @returns {Object|null}
      */
     getEnvConfig() {
-      return this.controller?.environment?.getConfig() ?? null
+      return bimControls.getEnvConfig()
     },
 
     // ========== 加载遮罩 ==========
@@ -243,9 +183,9 @@ export default defineComponent({
      * @returns {Object|null} 树结构数据
      */
     getModelTreeById(id) {
-      const modelTree = this.controller?.getGltfModelLoader()?.getModelTreeById(id)
+      const modelTree = bimControls.getModelTreeById(id)
       console.log('已获取模型树:', modelTree)
-      return modelTree ?? null
+      return modelTree
     },
 
     /**
@@ -254,7 +194,7 @@ export default defineComponent({
      * @returns {Object|null} { object, name, path, worldPosition, localPosition, screenPosition, model }
      */
     findPartByName(name) {
-      return this.controller?.getGltfModelLoader()?.findPartByName(name) ?? null
+      return bimControls.findPartByName(name)
     },
 
     /**
@@ -264,51 +204,17 @@ export default defineComponent({
      * @returns {boolean}
      */
     setPartMaterial(name, matKey) {
-      const info = this.findPartByName(name)
-      if (!info) {
-        console.warn(`部件 "${name}" 未找到`)
-        return false
-      }
-      const part = info.object
-
-      // matKey 为空：重置回 GLB 原始材质
-      if (!matKey) {
-        part.traverse((c) => {
-          if (c.isMesh && c.userData._gltfOriginalMaterial) {
-            c.material = c.userData._gltfOriginalMaterial
-          }
-        })
-        return true
-      }
-
-      if (typeof matKey === 'string') {
-        if (!this._matCfgInstance) {
-          this._matCfgInstance = new MaterialConfigurator(this.controller?.renderer)
-        }
-        const mat = this._matCfgInstance.getMaterialByKey(matKey)
-        if (!mat || !mat.isMaterial) return false
-        part.traverse((c) => { if (c.isMesh) c.material = mat })
-        return true
-      }
-
-      part.traverse((c) => { if (c.isMesh) c.material = matKey })
-      return true
+      return bimControls.setPartMaterial(name, matKey)
     },
 
     /** 按 name 高亮部件（半透明 + 轮廓线）并飞行聚焦 */
     highlightPart(name) {
-      const loader = this.controller?.getGltfModelLoader()
-      const info = this.findPartByName(name)
-      if (!info || !loader) return false
-      loader.highlight(info.object)
-      loader.flyToObject(info.object)
-      console.log(`已高亮部件 "${name}"`, info)
-      return info
+      return bimControls.highlightPart(name)
     },
 
     /** 清除当前高亮 */
     clearHighlight() {
-      this.controller?.clearGltfHighlight()
+      bimControls.clearHighlight()
     },
 
     /** 添加html标注（位置，元素）
@@ -317,12 +223,12 @@ export default defineComponent({
      * @param {Object} [vueApp] - 关联的 Vue app 实例，清理时自动 unmount
      */
     addAnnotation(position, element, vueApp) {
-      this.controller?.addAnnotation(position, element, vueApp)
+      bimControls.addAnnotation(position, element, vueApp)
     },
 
     /** 清除所有标注 */
     clearAnnotations() {
-      this.controller?.clearAnnotations()
+      bimControls.clearAnnotations()
     },
 
     
@@ -333,12 +239,12 @@ export default defineComponent({
      * @returns {boolean} 是否成功移除
      */
     removeModel(id, type) {
-      return this.controller?.removeModel(id, type) ?? false
+      return bimControls.removeModel(id, type)
     },
 
     /** 控制环境贴图是否启用 */
     controlEnvEnabled(enabled) {
-      this.controller?.environment.controlEnvMapEnabled(enabled)
+      bimControls.controlEnvEnabled(enabled)
     },
 
     /**
@@ -349,12 +255,12 @@ export default defineComponent({
      * @returns {boolean}
      */
     setModelVisible(id, visible, type) {
-      return this.controller?.setModelVisible(id, visible, type) ?? false
+      return bimControls.setModelVisible(id, visible, type)
     },
 
     /** 切换双相机透视渲染模式 */
     setDualPass(enabled) {
-      this.controller?.setDualPass(enabled)
+      bimControls.setDualPass(enabled)
     },
 
     /**
@@ -365,7 +271,7 @@ export default defineComponent({
      * @returns {boolean}
      */
     flyToModel(id, duration = 3000, type) {
-      return this.controller?.flyToModel(id, duration, type) ?? false
+      return bimControls.flyToModel(id, duration, type)
     },
 
     /**
@@ -381,7 +287,7 @@ export default defineComponent({
      * @returns {Promise<boolean>}
      */
     async setGltfGeoOrigin(newGeoInfo) {
-      return this.controller?.setGltfGeoOrigin(newGeoInfo) ?? false
+      return bimControls.setGltfGeoOrigin(newGeoInfo)
     },
 
     /**
@@ -390,9 +296,7 @@ export default defineComponent({
      * @param {Object} config - 标签配置对象（含 type、list 字段）
      */
     async renderLabels(config) {
-      const loader = this.controller?.getLabelRenderer()
-      if (!loader) return
-      await loader.renderFromConfig(config)
+      await bimControls.renderLabels(config)
     },
 
     /**
@@ -401,21 +305,16 @@ export default defineComponent({
      * @param {boolean} visible
      */
     setLabelVisible(type, visible) {
-      this.controller?.getLabelRenderer()?.setGroupVisible(type, visible)
+      bimControls.setLabelVisible(type, visible)
     },
 
     /**
      * 根据标签 ID 飞行定位到对应 3D 标签。
      * @param {number|string} id - 标签 ID
-     * @param {number} [duration=1200] - 飞行动画时长（毫秒）
+     * @param {number} [duration=3000] - 飞行动画时长（毫秒）
      */
     flyToLabel(id, duration = 3000) {
-      const loader = this.controller?.getLabelRenderer()
-      if (!loader) return
-      const target = loader.flyToLabel(id)
-      if (target && this.controller) {
-        this.controller.cameraManager.flyTo(target.center, target.distance / 12, duration)
-      }
+      bimControls.flyToLabel(id, duration)
     },
   },
 })
