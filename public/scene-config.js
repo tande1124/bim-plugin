@@ -9,39 +9,33 @@
 export default {
 
   /**
-   * 环境配置（天空/HDR/光照/曝光/Bloom）
+   * 环境配置（天空/HDR/光照/曝光）
    */
   envConfig: {
+    // 启用 HDR 环境贴图
     envMapEnabled: true,
 
-    bloom: {
-      enabled: false,
-      strength: 0.1,
-      radius: 0,
-      threshold: 0,
-    },
-
+    // 主方向光
     dirLight: {
-      intensity: 1.5,
-      yaw: 45,
-      pitch: 50,
-      color: '#ffffff',
-      showPosHelper: false,
-      showDirHelper: false,
+      intensity: 1,       // 光照强度
+      yaw: 45,              // 水平角度（度）
+      pitch: 50,            // 俯仰角度（度）
+      color: '#ffffff',     // 光照颜色
       shadow: {
-        enabled: true,
-        resolution: 4096,
-        range: 62,
-        offsetX: 0,
-        offsetY: 0,
-        bias: -0.001,
+        enabled: true,       // 启用阴影
+        resolution: 4096,    // 阴影贴图分辨率
+        range: 41,           // 阴影投射范围
+        offsetX: 0,          // 阴影 X 偏移
+        offsetY: 0,          // 阴影 Y 偏移
+        bias: -0.001         // 阴影深度偏移
       },
     },
 
+    // 环境光照
     envLight: {
-      intensity: 1,
-      bgIntensity: 1.5,
-      exposure: 1.3,
+      intensity: 0.3,          // IBL 环境光强度
+      bgIntensity: 1.5,      // HDR 背景强度
+      exposure: 1       // 全局曝光度
     },
   },
 

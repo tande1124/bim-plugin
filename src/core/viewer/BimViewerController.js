@@ -70,6 +70,10 @@ export class BimViewerController {
     // 相机管理器：统一管理相机、轨道控制、飞行、聚焦
     this.cameraManager = new CameraManager(this.renderer.domElement)
 
+    // 将相机/控制器传给环境管理器（灯光拖拽辅助线需要）
+    this.environment.camera = this.cameraManager.camera
+    this.environment.controls = this.cameraManager.controls
+
     // 3D Tiles 加载管理器
     this.tileModelLoader = new TileModelLoader({
       scene: this.scene,
@@ -163,7 +167,7 @@ export class BimViewerController {
 
     this.renderer.setPixelRatio(this.getPreferredPixelRatio())
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
-    this.renderer.toneMapping = THREE.NoToneMapping
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping   // 色调映射
     this.renderer.toneMappingExposure = 1
     this.renderer.autoClear = false // 双透模式手动控制清屏
 
@@ -221,11 +225,11 @@ export class BimViewerController {
    * 根据来源 ID 设置模型显隐。
    * @param {string} id - 数据源 ID
    * @param {boolean} visible - 是否可见
-   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+   * @param {'3dtiles'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
    * @returns {boolean} 是否成功设置
    */
   setModelVisible(id, visible, type) {
-    if (type === '3dtile') {
+    if (type === '3dtiles') {
       this.tileModelLoader.setLayerVisible(id, visible)
       return true
     }
@@ -241,11 +245,11 @@ export class BimViewerController {
   /**
    * 根据来源 ID 移除模型。
    * @param {string} id - 数据源 ID
-   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时尝试移除 3DTiles 和 GLB
+   * @param {'3dtiles'|'glb'|'gltf'} [type] - 模型类型；省略时同时尝试移除 3DTiles 和 GLB
    * @returns {boolean} 是否成功移除
    */
   removeModel(id, type) {
-    if (type === '3dtile') {
+    if (type === '3dtiles') {
       return this.tileModelLoader.removeById(id)
     }
     if (type === 'glb' || type === 'gltf') {
@@ -261,7 +265,7 @@ export class BimViewerController {
    * 根据来源 ID 飞行定位到指定模型。
    * @param {string} id - 数据源 ID
    * @param {number} [duration=3000] - 飞行动画时长（毫秒）
-   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+   * @param {'3dtiles'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
    * @returns {boolean} 是否成功飞行
    */
   flyToModel(id, duration = 3000, type) {
@@ -269,7 +273,7 @@ export class BimViewerController {
     const flyToTileset = (box, dur) => {
       this.cameraManager.flyToBox(box, dur)
     }
-    if (type === '3dtile') {
+    if (type === '3dtiles') {
       return this.tileModelLoader.flyToById(id, flyToTileset, duration)
     }
     if (type === 'glb' || type === 'gltf') {

@@ -1,7 +1,12 @@
 <template>
-    <InsBimPlusViewer ref="bimViewer" @ready="onReady" @model-loaded="onModelLoaded" @error="onError"
+    <InsBimPlusViewer ref="bimViewer" :sceneCode="code" @ready="onReady" @model-loaded="onModelLoaded" @error="onError"
         @gltf-pick="onPartClick" @label-click="onLabelClick" />
-    <div class="toolbar">
+    <div class="toolbar" v-show="!code">
+        <div class="toolbar-group">
+            <el-button type="primary" size="small" @click="loadTilesets">加载地形</el-button>
+            <el-button type="primary" size="small" @click="loadBIM">加载bim</el-button>
+            <el-button type="primary" size="small" @click="loadLabels">加载标签</el-button>
+        </div>
         <div class="toolbar-group">
             <el-switch v-model="envShow" active-text="环境" @change="handleSceneEvent" />
             <el-checkbox v-model="tileShow" @change="handleLayerToggle">地形</el-checkbox>
@@ -9,12 +14,15 @@
             <el-checkbox v-model="labelsVisible" @change="handleRenderLabels">标签</el-checkbox>
         </div>
         <div class="toolbar-group">
-            <el-button type="primary" size="small" @click="getModelInfo">模型信息</el-button>
-            <el-button type="primary" size="small" @click="flyToTileset">定位地形</el-button>
-            <el-button type="primary" size="small" @click="resetView">回归视角</el-button>
-            <el-button type="primary" size="small" @click="setSceneCoordinate">场景坐标配置</el-button>
-            <el-button type="primary" size="small" @click="setModelMaterial">模型材质</el-button>
-            <el-button type="primary" size="small" @click="resetMaterial">重置材质</el-button>
+            <el-button type="danger" size="small" @click="setSceneCoordinate">场景坐标配置</el-button>
+            <el-button type="danger" size="small" @click="openSceneEnv">环境设置</el-button>
+        </div>
+        <div class="toolbar-group">
+            <el-button type="success" size="small" @click="getModelInfo">模型信息</el-button>
+            <el-button type="success" size="small" @click="resetView">回归视角</el-button>
+            <el-button type="success" size="small" @click="flyToTileset">定位地形</el-button>
+            <el-button type="success" size="small" @click="setModelMaterial">模型材质</el-button>
+            <el-button type="success" size="small" @click="resetMaterial">重置材质</el-button>
         </div>
     </div>
     <div v-if="showModelTree" class="model-tree-panel">
@@ -26,19 +34,31 @@
             <ModelTree :node="modelTreeData" :bimViewer="$refs.bimViewer" />
         </div>
     </div>
+    <div v-if="showSceneEnvPanel" class="scene-env-panel">
+        <div class="panel-header">
+            <span>环境设置</span>
+            <el-button type="info" link @click="showSceneEnvPanel = false">关闭</el-button>
+        </div>
+        <div class="panel-body">
+            <SceneEnvPanel @close="showSceneEnvPanel = false" />
+        </div>
+    </div>
 </template>
 
 <script>
 import { createApp } from "vue";
 import PartInfoLabel from "./PartInfoLabel.vue";
 import ModelTree from "./ModelTree.vue";
+import SceneEnvPanel from "./SceneEnvPanel.vue";
 
 export default {
     components: {
         ModelTree,
+        SceneEnvPanel,
     },
     data() {
         return {
+            code: "",
             tilesetSources: [
                 {
                     id: "rm-tileset",
@@ -49,14 +69,14 @@ export default {
             ],
             gltfSources: [
                 {
-                    id: "rm-glb",
+                    id: "RM_",
                     name: "RM模型",
                     visible: true,
                     url: "http://192.168.8.77:3000/data/gltf/rm/RM_.glb",
                 }
             ],
             envConfig: window.BizConfig?.sceneConfig?.envConfig,
-            materialConfig: window.BizConfig?.materialConfig,
+            materialConfig: window.BizConfig.sceneConfig?.materialConfig,
 
 
             controller: null, // 底层控制器实例
@@ -66,6 +86,7 @@ export default {
             labelsVisible: true, // 标签显示
             modelTreeData: null, // 模型树数据
             showModelTree: false, // 是否显示模型树面板
+            showSceneEnvPanel: false,
 
             labelConfig: {
                 // 图层组类型（同类型标签归为一组，便于整体显隐控制）
@@ -119,7 +140,6 @@ export default {
             },
         };
     },
-    components: { ModelTree },
     methods: {
         // 场景就绪后，按顺序加载环境、材质、地形、模型、标签
         async onReady(controller) {
@@ -127,24 +147,8 @@ export default {
             const v = this.$refs.bimViewer;
             if (!v) return;
 
-            // 1. 环境配置
+            // 环境配置
             v.applyEnvConfig(this.envConfig);
-
-            // 2. 材质配置（先于模型加载，后续 loadGltfModels 会自动应用）
-            // v.applyMaterialConfig(this.materialConfig);
-
-            // 3. 加载地形
-            v.showLoading('正在加载地形…');
-            await v.loadTilesets(this.tilesetSources);
-
-            // 4. 加载模型（自动应用已设置的材质配置）
-            v.showLoading('正在加载模型…');
-            await v.loadGltfModels(this.gltfSources);
-
-            // 5. 渲染标签
-            await v.renderLabels(this.labelConfig);
-
-            v.hideLoading();
         },
         onModelLoaded() {
 
@@ -171,6 +175,26 @@ export default {
 
         onLabelClick(info) {
 
+        },
+
+        loadTilesets() {
+            if (!this.$refs.bimViewer) return;
+            this.$refs.bimViewer.showLoading('正在加载地形…');
+            this.$refs.bimViewer.loadTilesets(this.tilesetSources);
+            this.$refs.bimViewer.hideLoading();
+        },
+        loadBIM() {
+            if (!this.$refs.bimViewer) return;
+            this.$refs.bimViewer.showLoading('正在加载模型…');
+            this.$refs.bimViewer.loadGltfModels(this.gltfSources);
+            this.$refs.bimViewer.hideLoading();
+        },
+
+        loadLabels() {
+            if (!this.$refs.bimViewer) return;
+            this.$refs.bimViewer.showLoading('正在加载标签…');
+            this.$refs.bimViewer.renderLabels(this.labelConfig);
+            this.$refs.bimViewer.hideLoading();
         },
 
         handleSceneEvent() {
@@ -221,6 +245,9 @@ export default {
             });
         },
 
+        openSceneEnv() {
+            this.showSceneEnvPanel = !this.showSceneEnvPanel;
+        },
         setModelMaterial() {
             if (!this.$refs.bimViewer) return;
             this.$refs.bimViewer.applyMaterialConfig(this.materialConfig);
@@ -298,5 +325,35 @@ body,
     flex: 1;
     overflow: auto;
     padding: 8px;
+}
+
+.scene-env-panel {
+    position: fixed;
+    top: 150px;
+    right: 30px;
+    width: 340px;
+    max-height: calc(100% - 80px);
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 6px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    z-index: 9999;
+}
+
+.scene-env-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #ebeef5;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.scene-env-panel .panel-body {
+    flex: 1;
+    overflow: visible;
+    padding: 8px 12px;
 }
 </style>

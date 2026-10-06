@@ -133,12 +133,14 @@ export class TileModelLoader {
         }),
       )
 
-      // 瓦片网格分配到 Layer 0（外壳层）并启用双面渲染
+      // 瓦片网格分配到 Layer 0（外壳层）并启用双面渲染 + 阴影
       tr.addEventListener('load-model', ({ scene }) => {
         scene.traverse((obj) => {
           if (obj.isMesh) {
             obj.layers.set(0)
             if (obj.material) obj.material.side = THREE.DoubleSide
+            obj.castShadow = true
+            obj.receiveShadow = true
           }
         })
       })

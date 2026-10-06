@@ -4,6 +4,12 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { disposeObject3D } from '../../utils/three-dispose'
 import { createGeoReferenceMatrix } from '../../utils/geo-coordinate'
 
+// TODO--禁用 GLTFLoader 对节点名称的清洗（空格→下划线、移除 [ ] . : /）。
+// GLB 模型中常用方括号标注编号，如 "第 0001 单元 [32845CDAB621]"，
+// 默认会被 sanitizeNodeName 清洗为 "第_0001_单元_32845CDAB621"。
+// 注意：若模型包含动画数据（AnimationMixer），禁用清洗可能导致 parseTrackName 解析异常。
+THREE.PropertyBinding.sanitizeNodeName = (name) => name
+
 /**
  * GLTF/GLB 模型加载器。
  *
@@ -127,6 +133,14 @@ export class GltfModelLoader {
     } else {
       console.warn('[GltfModelLoader] 未提供 geo 参数，跳过 geoOrigin 存储。model:', model.name)
     }
+
+    // 设置阴影投射/接收（对齐参考项目 enableShadows）
+    model.traverse((obj) => {
+      if (obj.isMesh) {
+        obj.castShadow = true
+        obj.receiveShadow = true
+      }
+    })
 
     this.root.add(model)
     return model

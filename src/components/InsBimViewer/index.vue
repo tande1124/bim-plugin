@@ -14,10 +14,18 @@ import { defineComponent, markRaw } from 'vue'
 import { BimViewerController } from '../../core/viewer/BimViewerController'
 import { bimControls } from '../../exports/bimControls'
 import { registerViewer, unregisterViewer } from '../../exports/internal/viewerRegistry'
+import { GisBimSceneInfoController_BimSceneGetAllNodesByCode } from '../../api/unigisserver.js'
+
+
+const BIM_RE = /\.(glb|gltf)$/i;
+const TILESET_RE = /\.(json|tileset.json)$/i;
 
 export default defineComponent({
   name: 'InsBimPlusViewer',
   emits: ['ready', 'gltf-pick', 'label-click', 'model-loaded', 'error'],
+  props: {
+    sceneCode: { type: String, default: '' },   // 场景编码
+  },
   data() {
     return {
       controller: null,
@@ -29,9 +37,7 @@ export default defineComponent({
     await this.bootstrap()
   },
   beforeUnmount() {
-    unregisterViewer()
-    this.controller?.destroy()
-    this.controller = null
+    this.destroy()
   },
   methods: {
     /** 初始化 Three.js 场景（仅挂载 DOM + 启动渲染循环），完成后 emit ready */
@@ -64,10 +70,89 @@ export default defineComponent({
       registerViewer(this.controller)
 
       this.loading = false
+      if (this.sceneCode) {
+        await this.loadScene()
+      }
       this.$emit('ready', this.controller)
     },
 
-    // ========== 数据加载（外部通过 ref 调用） ==========
+
+    /**
+     * 根据场景编码加载场景。
+     * @param {string} sceneCode - 场景编码
+     */
+    async loadScene() {
+      try {
+        const res = await GisBimSceneInfoController_BimSceneGetAllNodesByCode(this.sceneCode)
+        if (!res) return
+
+        // 解析场景配置
+        const { envConfig, cameraConfig, geoInfoConfig, materialConfig } = res.scene ?? {}
+        const env = envConfig ? JSON.parse(envConfig) : null
+        const camera = cameraConfig ? JSON.parse(cameraConfig) : null
+        const material = materialConfig ? JSON.parse(materialConfig) : null
+        const geoInfo = geoInfoConfig ? JSON.parse(geoInfoConfig) : null
+
+        // 1. 环境配置
+        if (env) await bimControls.applyEnvConfig(env)
+
+        // 2. 材质配置（先于模型加载，后续 loadGltfModels 会自动应用）
+        if (material) await bimControls.applyMaterialConfig(material)
+
+        // 3. 分类收集模型图层
+        const glbModels = []
+        const tilesets = []
+        for (const layer of res.layers ?? []) {
+          const { layerId, layerUrl, visible, name } = layer
+          const isGlb = BIM_RE.test(layerUrl)
+          const isTileset = !isGlb && TILESET_RE.test(layerUrl)
+          if (!isGlb && !isTileset) continue
+
+          const entry = { id: layerId, name, url: layerUrl, visible: visible === 1 }
+          if (isGlb) glbModels.push(entry)
+          else tilesets.push(entry)
+        }
+
+        // 4. 并行加载模型（GLB 传入 geoInfo 进行地理配准）
+        if (glbModels.length || tilesets.length) {
+          this.showLoading('正在加载模型…')
+        }
+
+        const loadBatch = async (models, method, extraArg) => {
+          if (!models.length) return
+          try {
+            const args = extraArg ? [models, extraArg] : [models]
+            await bimControls[method](...args)
+            if (models.length === 1) {
+              bimControls.flyToModel?.(models[0].id)
+            }
+          } catch {
+            this.$message.error('模型加载失败')
+          }
+        }
+
+        await Promise.all([
+          loadBatch(tilesets, 'loadTilesets'),
+          loadBatch(glbModels, 'loadGltfModels', geoInfo),
+        ])
+
+        this.hideLoading()
+
+        // 5. 场景坐标系配置（增量更新，用于运行时动态调整）
+        if (geoInfo) await bimControls.setGltfGeoOrigin(geoInfo)
+
+        // 6. 相机配置
+        if (camera) bimControls.resetCamera(camera)
+      } catch (error) {
+        bimControls.applyEnvConfig(window.BizConfig?.sceneConfig?.envConfig,);
+        this.hideLoading()
+        this.$message.error(error.message || '场景加载失败')
+      }
+    },
+
+
+
+    // ==================================== 数据加载（外部通过 ref 调用） =================================
 
     /**
      * 加载 3D Tiles 地形。
@@ -81,10 +166,13 @@ export default defineComponent({
      * 依次加载 GLTF 模型。
      * 若之前调用过 applyMaterialConfig，会自动将材质配置应用到新加载的模型。
      * @param {Array<{id: string, url: string, name?: string, visible?: boolean}>} sources
+     * @param {Object} [geoOrigin] - 地理配准原点（对应 sceneConfig.geoOrigin）
      */
-    loadGltfModels(sources) {
-      return bimControls.loadGltfModels(sources, {
+    loadGltfModels(sources, geoOrigin) {
+      return bimControls.loadGltfModels(sources, geoOrigin, {
         onModelLoaded: (id, url) => {
+          // 模型加载后刷新阴影（新 mesh 需要 castShadow/receiveShadow）
+          bimControls.refreshSceneShadows()
           this.$emit('model-loaded', { id, url })
         },
         onError: (error, id, url) => {
@@ -231,11 +319,11 @@ export default defineComponent({
       bimControls.clearAnnotations()
     },
 
-    
+
     /**
      * 根据来源 ID 移除模型。
      * @param {string} id - 数据源 ID
-     * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时尝试移除 3DTiles 和 GLB
+     * @param {'3dtiles'|'glb'|'gltf'} [type] - 模型类型；省略时同时尝试移除 3DTiles 和 GLB
      * @returns {boolean} 是否成功移除
      */
     removeModel(id, type) {
@@ -251,11 +339,20 @@ export default defineComponent({
      * 根据来源 ID 设置模型显隐。
      * @param {string} id - 数据源 ID
      * @param {boolean} visible - 是否可见
-     * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+     * @param {'3dtiles'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
      * @returns {boolean}
      */
     setModelVisible(id, visible, type) {
       return bimControls.setModelVisible(id, visible, type)
+    },
+
+    /**
+     * 按类型批量设置所有模型的显隐。
+     * @param {'3dtiles'|'glb'|'gltf'} type - 模型类型
+     * @param {boolean} visible - 是否可见
+     */
+    setModelVisibleByType(type, visible) {
+      bimControls.setModelVisibleByType(type, visible)
     },
 
     /** 切换双相机透视渲染模式 */
@@ -267,7 +364,7 @@ export default defineComponent({
      * 根据来源 ID 飞行定位到指定模型。
      * @param {string} id - 数据源 ID
      * @param {number} [duration=3000] - 飞行动画时长（毫秒）
-     * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+     * @param {'3dtiles'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
      * @returns {boolean}
      */
     flyToModel(id, duration = 3000, type) {
@@ -316,14 +413,30 @@ export default defineComponent({
     flyToLabel(id, duration = 3000) {
       bimControls.flyToLabel(id, duration)
     },
+
+    // ========== 生命周期 ==========
+
+    /**
+     * 销毁查看器，释放所有 GPU 资源与 DOM 监听。
+     * 组件卸载时会自动调用，也可通过 ref 手动调用提前销毁。
+     */
+    destroy() {
+      unregisterViewer()
+      this.controller?.destroy()
+      this.controller = null
+      bimControls.dispose()
+      this.loading = false
+      this.loadingText = ''
+    },
   },
 })
 </script>
 
-<style >
+<style>
 .viewer-panel {
   position: relative;
 }
+
 .viewer-panel,
 .viewer-panel .threejs-viewer-canvas {
   width: 100%;
@@ -359,7 +472,9 @@ export default defineComponent({
 }
 
 @keyframes viewer-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .viewer-loading-text {

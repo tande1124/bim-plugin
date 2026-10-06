@@ -4,6 +4,12 @@
 
 import InsBimViewer from './components/InsBimViewer'
 import { bimControls } from './exports/bimControls'
+import { patchRequestFor3dTiles } from './utils/patch'
+
+
+// 在 Mars3D 初始化之前拦截 fetch/XHR，为 gis 请求请求自动追加 token
+patchRequestFor3dTiles()
+
 
 export default {
     install(app) {

@@ -285,11 +285,13 @@ export class MaterialConfigurator {
    * 直接传入配置数组应用材质映射。
    * @param {Array} arr - 材质配置数组
    * @param {THREE.Object3D} model - 已加载的 GLB 模型根节点
+   * @param {string} [sourceId] - 模型来源 ID，用于过滤配置条目（对应 gltfSources[].id）
    * @returns {{ hdrMeta: Object|null, appliedCount: number }}
    */
-  applyConfig(arr, model) {
+  applyConfig(arr, model, sourceId) {
+    if (!Array.isArray(arr)) return { hdrMeta: null, appliedCount: 0 }
     const { entries, hdrMeta } = this.parseStateArray(arr)
-    const appliedCount = this.applyEntries(entries, model)
+    const appliedCount = this.applyEntries(entries, model, sourceId)
     return { hdrMeta, appliedCount }
   }
 
@@ -312,9 +314,9 @@ export class MaterialConfigurator {
         continue
       }
 
-      if (typeof obj.meshName === 'string' && typeof obj.modelName === 'string') {
+      if (typeof obj.meshName === 'string' && (typeof obj.modelId === 'string' || typeof obj.modelName === 'string')) {
         entries.push({
-          modelName: obj.modelName,
+          modelId: obj.modelId ?? obj.modelName,
           meshName: obj.meshName,
           matKey: obj.matKey ?? '',
         })
@@ -324,10 +326,14 @@ export class MaterialConfigurator {
     return { entries, hdrMeta }
   }
 
-  /** 遍历模型，按 meshName 匹配并应用 matKey 对应的材质。 */
-  applyEntries(entries, model) {
-    // 过滤 matKey 非空的条目
-    const relevant = entries.filter((e) => e.matKey)
+  /** 遍历模型，按 meshName 匹配并应用 matKey 对应的材质。支持按 sourceId 过滤。 */
+  applyEntries(entries, model, sourceId) {
+    // 过滤 matKey 非空的条目，若有 sourceId 则只保留匹配的条目
+    const relevant = entries.filter((e) => {
+      if (!e.matKey) return false
+      if (sourceId && e.modelId !== sourceId) return false
+      return true
+    })
     if (relevant.length === 0) return 0
 
     // meshName → matKey 快速查找

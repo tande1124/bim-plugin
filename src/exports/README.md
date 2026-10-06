@@ -99,13 +99,14 @@ bimControls.loadTilesets([
 
 ---
 
-### `loadGltfModels(sources)`
+### `loadGltfModels(sources, geoOrigin?)`
 
 依次加载 GLTF/GLB 模型。若之前调用过 `applyMaterialConfig`，会自动将材质配置应用到新加载的模型。
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `sources` | `Array<{id, url, name?, visible?}>` | 模型数据源列表 |
+| `geoOrigin` | `Object` | 可选，地理配准原点（对应 `sceneConfig.geoOrigin`），不传则不做地理配准 |
 
 **sources 字段说明：**
 
@@ -116,11 +117,28 @@ bimControls.loadTilesets([
 | `name` | `string` | — | 显示名称（用于模型树和路径展示） |
 | `visible` | `boolean` | `true` | 加载后是否可见（`null`/`undefined` 视为 `true`） |
 
+**geoOrigin 字段说明：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `centralMeridianDeg` | `number` | 高斯-克吕格中央子午线经度（度） |
+| `offsetX` | `number` | 模型原点投影东坐标（米） |
+| `offsetY` | `number` | 模型原点投影北坐标（米） |
+| `offsetZ` | `number` | 模型原点高程（米），默认 `0` |
+| `verticalScale` | `number` | 垂直缩放比例，默认 `1` |
+
 ```js
+// 不传 geoOrigin（无地理配准）
 bimControls.loadGltfModels([
     { id: 'rm-glb', name: 'RM模型', url: 'http://server/data/gltf/rm/RM_.glb' },
     { id: 'rm-model', name: '隧道模型', url: 'http://server/data/gltf/rm/model.glb', visible: false },
 ])
+
+// 传入 geoOrigin（加载时即完成地理配准）
+bimControls.loadGltfModels(
+    [{ id: 'rm-glb', name: 'RM模型', url: 'http://server/data/gltf/rm/RM_.glb' }],
+    { centralMeridianDeg: 99, offsetX: 436200, offsetY: 3282400, offsetZ: 2000 }
+)
 ```
 
 ---
@@ -451,18 +469,40 @@ bimControls.controlEnvEnabled(false)
 |------|------|------|
 | `id` | `string` | 数据源 ID（加载时传入的 `id`） |
 | `visible` | `boolean` | 是否可见 |
-| `type` | `'3dtile' \| 'glb' \| 'gltf'` | 可选，模型类型；省略时同时在两端查找 |
+| `type` | `'3dtiles' \| 'glb' \| 'gltf'` | 可选，模型类型；省略时同时在两端查找 |
 | **返回** | `boolean` | 是否成功设置 |
 
 ```js
 // 控制 3D Tiles 显隐
-bimControls.setModelVisible('rm-tileset', false, '3dtile')
+bimControls.setModelVisible('rm-tileset', false, '3dtiles')
 
 // 控制 GLB 模型显隐
 bimControls.setModelVisible('rm-glb', false, 'glb')
 
 // 不指定类型，自动在两端查找
 bimControls.setModelVisible('rm-glb', true)
+```
+
+---
+
+### `setModelVisibleByType(type, visible)`
+
+按类型批量设置所有模型的显隐。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `type` | `'3dtiles' \| 'glb' \| 'gltf'` | 模型类型 |
+| `visible` | `boolean` | 是否可见 |
+
+```js
+// 隐藏所有地形
+bimControls.setModelVisibleByType('3dtiles', false)
+
+// 隐藏所有 GLB 模型
+bimControls.setModelVisibleByType('glb', false)
+
+// 显示所有 GLB 模型
+bimControls.setModelVisibleByType('gltf', true)
 ```
 
 ---
@@ -474,12 +514,12 @@ bimControls.setModelVisible('rm-glb', true)
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `id` | `string` | 数据源 ID（加载时传入的 `id`） |
-| `type` | `'3dtile' \| 'glb' \| 'gltf'` | 可选，模型类型；省略时同时尝试移除 3DTiles 和 GLB |
+| `type` | `'3dtiles' \| 'glb' \| 'gltf'` | 可选，模型类型；省略时同时尝试移除 3DTiles 和 GLB |
 | **返回** | `boolean` | 是否成功移除 |
 
 ```js
 // 移除指定类型的模型
-bimControls.removeModel('rm-tileset', '3dtile')
+bimControls.removeModel('rm-tileset', '3dtiles')
 bimControls.removeModel('rm-glb', 'glb')
 
 // 不指定类型，自动在两端查找
@@ -525,12 +565,12 @@ bimControls.setLabelVisible('label', false)
 |------|------|--------|------|
 | `id` | `string` | — | 数据源 ID（加载时传入的 `id`） |
 | `duration` | `number` | `3000` | 飞行动画时长（毫秒） |
-| `type` | `'3dtile' \| 'glb' \| 'gltf'` | — | 可选，模型类型；省略时先在 GLB 中查找，再在 3DTiles 中查找 |
+| `type` | `'3dtiles' \| 'glb' \| 'gltf'` | — | 可选，模型类型；省略时先在 GLB 中查找，再在 3DTiles 中查找 |
 | **返回** | `boolean` | — | 是否成功飞行 |
 
 ```js
 // 飞行到 3D Tiles
-bimControls.flyToModel('rm-tileset', 2000, '3dtile')
+bimControls.flyToModel('rm-tileset', 2000, '3dtiles')
 
 // 飞行到 GLB 模型
 bimControls.flyToModel('rm-glb', 2000, 'glb')
@@ -643,7 +683,8 @@ export default {
             await bimControls.loadTilesets(this.tilesetSources)
 
             // 4. 加载 GLB 模型（自动应用已设置的材质配置）
-            await bimControls.loadGltfModels(this.gltfSources)
+            // geoOrigin 可从 sceneConfig 读取，不传则不做地理配准
+            await bimControls.loadGltfModels(this.gltfSources, sceneConfig.geoOrigin)
 
             // 5. 渲染 3D 标签
             bimControls.renderLabels({ type: 'label', list: [...] })

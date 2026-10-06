@@ -8,7 +8,7 @@
  *   import { bimControls } from '@ins/vam2-plugin-bim'
  *   bimControls.highlightPart('some-part-name')
  */
-
+import Setting from '@core/setting'
 import { getViewer } from './internal/viewerRegistry'
 import { MaterialConfigurator } from '../core/loaders/MaterialConfigurator'
 
@@ -17,11 +17,24 @@ let _matCfgInstance = null
 /** 当前材质配置（配置数组），供后续 loadGltfModels 自动应用 */
 let _materialConfig = null
 
+
+const ServerService = Setting.apiBaseURL?.UniGISServer?.ServerService || ''
+
+/**
+ * 根据当前页面地址动态计算服务基址。
+ * 取当前 URL 的目录部分，效果和浏览器解析相对链接的 base 一致，
+ * 确保 WMS / 3DTiles 请求能自动带上应用部署路径前缀。
+ */
+export function getServiceBaseUrl() {
+  const cleanHref = window.location.href.split('#')[0].split('?')[0]
+  return new URL('.', cleanHref).href.replace(/\/$/, '')
+}
+
 /**
  * BIM 查看器外部操作接口
  */
 const bimControls = {
-  // ========== 数据加载 ==========
+  // TODO ========== 数据加载 ==========
 
   /**
    * 加载 3D Tiles 地形。
@@ -34,31 +47,34 @@ const bimControls = {
       id: s.id,
       name: s.name || s.id,
       kind: 'terrain',
-      url: s.url,
+      url: /^https?:\/\//i.test(s.url) ? s.url : getServiceBaseUrl() + `/${ServerService}${s.url}`,
     }))
     await c.loadScene(mapped)
 
     // 加载完成后应用显隐配置（visible 为 null/undefined 时默认显示）
     for (const s of sources) {
       if (s.visible === false) {
-        c.setModelVisible(s.id, false, '3dtile')
+        c.setModelVisible(s.id, false, '3dtiles')
       }
     }
+
+    // 地形加载后刷新阴影（设置 mesh castShadow/receiveShadow + 适配阴影相机范围）
+    this.refreshSceneShadows()
   },
 
   /**
    * 依次加载 GLTF 模型。
    * 若之前调用过 applyMaterialConfig，会自动将材质配置应用到新加载的模型。
    * @param {Array<{id: string, url: string, name?: string, visible?: boolean}>} sources
+   * @param {Object} [geoOrigin] - 地理配准原点
    * @param {Object} [callbacks] - 可选回调（供 Vue 组件注入 $emit）
    * @param {Function} [callbacks.onModelLoaded] - 单个模型加载成功 (id, url)
    * @param {Function} [callbacks.onError] - 单个模型加载失败 (error, id, url)
    */
-  async loadGltfModels(sources, callbacks) {
+  async loadGltfModels(sources, geoOrigin, callbacks) {
     const c = getViewer()
     if (!c || !sources?.length) return
     const loader = c.getGltfModelLoader()
-    const geoOrigin = window.BizConfig?.sceneConfig?.geoOrigin
 
     for (const source of sources) {
       try {
@@ -66,7 +82,7 @@ const bimControls = {
 
         // 自动应用已缓存的材质配置
         if (_materialConfig && _matCfgInstance) {
-          _matCfgInstance.applyConfig(_materialConfig, model)
+          _matCfgInstance.applyConfig(_materialConfig, model, source.id)
         }
 
         // 应用显隐配置（visible 为 null/undefined 时默认显示）
@@ -99,7 +115,7 @@ const bimControls = {
     await loader.renderFromConfig(config)
   },
 
-  // ========== 配置管理（整体替换） ==========
+  // TODO ========== 配置管理（整体替换） ==========
 
   /**
    * 应用环境配置（天空/HDR/光照/曝光）。
@@ -121,11 +137,11 @@ const bimControls = {
       _matCfgInstance = new MaterialConfigurator(c.renderer)
     }
     _materialConfig = config
-    // 重新应用到所有已加载的 GLB 模型
+    // 重新应用到所有已加载的 GLB 模型（按 sourceId 过滤配置条目）
     const root = c.getGltfModelLoader()?.root
     if (root) {
       for (const model of root.children) {
-        _matCfgInstance.applyConfig(config, model)
+        _matCfgInstance.applyConfig(config, model, model.userData?.sourceId)
       }
     }
   },
@@ -167,7 +183,8 @@ const bimControls = {
     getViewer()?.resetCamera(cameraConfig, duration)
   },
 
-  // ========== 运行时细粒度调参 ==========
+
+  // TODO========== 运行时细粒度调参 ==========
 
   /**
    * 修改单个环境参数并立即生效。
@@ -197,7 +214,7 @@ const bimControls = {
   },
 
 
-  // ========== 部件操作 ==========
+  // TODO ========== 部件操作 ==========
 
   /**
    * 通过来源 ID 获取模型结构树。
@@ -278,9 +295,10 @@ const bimControls = {
     getViewer()?.clearGltfHighlight()
   },
 
-  // ========== 标注管理 ==========
 
-  /**
+  // TODO ========== 标注管理 ==========
+
+  /** 
    * 添加 HTML 标注（位置，元素）。
    * @param {THREE.Vector3} position - 世界坐标
    * @param {HTMLElement} element - DOM 元素
@@ -297,18 +315,35 @@ const bimControls = {
 
 
 
-  // ========== 图层控制 ==========
+  // TODO ========== 图层控制 ==========
 
   /** 控制环境贴图是否启用 */
   controlEnvEnabled(enabled) {
     getViewer()?.environment.controlEnvMapEnabled(enabled)
   },
 
+  /** 显示/隐藏灯光方向辅助线 */
+  toggleLightHelper(show) {
+    getViewer()?.environment.toggleLightHelper(show)
+  },
+
+  /**
+   * 刷新场景阴影设置（模型加载后调用）。
+   * 遍历场景所有 mesh 设置 castShadow/receiveShadow，并重新适配阴影相机范围。
+   */
+  refreshSceneShadows() {
+    const env = getViewer()?.environment
+    if (!env?.dirLight) return
+    const shadowEnabled = env.config?.dirLight?.shadow?.enabled ?? true
+    env._setMeshShadows(shadowEnabled)
+    env._autoFitShadowCamera()
+  },
+
   /**
    * 根据来源 ID 设置模型显隐。
    * @param {string} id - 数据源 ID
    * @param {boolean} visible - 是否可见
-   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+   * @param {'3dtiles'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
    * @returns {boolean}
    */
   setModelVisible(id, visible, type) {
@@ -316,9 +351,34 @@ const bimControls = {
   },
 
   /**
+   * 按类型批量设置所有模型的显隐。
+   * @param {'3dtiles'|'glb'|'gltf'} type - 模型类型
+   * @param {boolean} visible - 是否可见
+   */
+  setModelVisibleByType(type, visible) {
+    const c = getViewer()
+    if (!c) return
+
+    if (type === '3dtiles') {
+      for (const tr of c.tileModelLoader.tilesRenderers) {
+        tr.group.visible = visible
+      }
+      return
+    }
+
+    if (type === 'glb' || type === 'gltf') {
+      const loader = c.getGltfModelLoader()
+      if (!loader) return
+      for (const model of loader.root.children) {
+        model.visible = visible
+      }
+    }
+  },
+
+  /**
    * 根据来源 ID 移除模型。
    * @param {string} id - 数据源 ID
-   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时尝试移除 3DTiles 和 GLB
+   * @param {'3dtiles'|'glb'|'gltf'} [type] - 模型类型；省略时同时尝试移除 3DTiles 和 GLB
    * @returns {boolean} 是否成功移除
    */
   removeModel(id, type) {
@@ -343,7 +403,7 @@ const bimControls = {
    * 根据来源 ID 飞行定位到指定模型。
    * @param {string} id - 数据源 ID
    * @param {number} [duration=3000] - 飞行动画时长（毫秒）
-   * @param {'3dtile'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
+   * @param {'3dtiles'|'glb'|'gltf'} [type] - 模型类型；省略时同时在两端查找
    * @returns {boolean}
    */
   flyToModel(id, duration = 3000, type) {
@@ -379,6 +439,21 @@ const bimControls = {
     if (target) {
       c.cameraManager.flyTo(target.center, target.distance / 12, duration)
     }
+  },
+
+  // ========== 生命周期 ==========
+
+  /**
+   * 释放 bimControls 内部缓存的 GPU 资源。
+   * 清除材质配置器缓存（含纹理）、重置材质配置引用。
+   * 应在查看器销毁时调用。
+   */
+  dispose() {
+    if (_matCfgInstance) {
+      _matCfgInstance.clearCache()
+      _matCfgInstance = null
+    }
+    _materialConfig = null
   },
 }
 
