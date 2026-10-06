@@ -76,7 +76,7 @@ export default {
                 }
             ],
             envConfig: window.BizConfig?.sceneConfig?.envConfig,
-            materialConfig: window.BizConfig.sceneConfig?.materialConfig,
+            materialConfig: window.BizConfig?.sceneConfig?.materialConfig,
 
 
             controller: null, // 底层控制器实例
@@ -177,23 +177,23 @@ export default {
 
         },
 
-        loadTilesets() {
+        async loadTilesets() {
             if (!this.$refs.bimViewer) return;
             this.$refs.bimViewer.showLoading('正在加载地形…');
-            this.$refs.bimViewer.loadTilesets(this.tilesetSources);
+            await this.$refs.bimViewer.loadTilesets(this.tilesetSources);
             this.$refs.bimViewer.hideLoading();
         },
-        loadBIM() {
+        async loadBIM() {
             if (!this.$refs.bimViewer) return;
             this.$refs.bimViewer.showLoading('正在加载模型…');
-            this.$refs.bimViewer.loadGltfModels(this.gltfSources);
+            await this.$refs.bimViewer.loadGltfModels(this.gltfSources);
             this.$refs.bimViewer.hideLoading();
         },
 
-        loadLabels() {
+        async loadLabels() {
             if (!this.$refs.bimViewer) return;
             this.$refs.bimViewer.showLoading('正在加载标签…');
-            this.$refs.bimViewer.renderLabels(this.labelConfig);
+            await this.$refs.bimViewer.renderLabels(this.labelConfig);
             this.$refs.bimViewer.hideLoading();
         },
 

@@ -370,10 +370,6 @@ export class EnvironmentManager {
 
     // ---- 阴影（renderer.shadowMap.enabled 在灯光创建时已设为 true 且永不关闭） ----
     const sh = dl.shadow
-    console.log('[Shadow] setupDirLight, enabled:', sh.enabled,
-      'lightPos:', mainLight.position.toArray().map(v => v.toFixed(1)),
-      'castShadow:', mainLight.castShadow,
-      'renderer.shadowMap.enabled:', this.renderer.shadowMap.enabled)
     if (sh.enabled) {
       mainLight.castShadow = true
       mainLight.shadow.mapSize.set(sh.resolution ?? 4096, sh.resolution ?? 4096)
@@ -393,43 +389,19 @@ export class EnvironmentManager {
         mainLight.shadow.map = null
       }
       mainLight.shadow.needsUpdate = true
-      // 确保所有模型 mesh 都有 castShadow/receiveShadow（不依赖加载器）
-      this._setMeshShadows(true)
+      // 首次加载或模型加载后确保所有 mesh 有 castShadow/receiveShadow
+      if (!this._meshShadowsInitialized) {
+        this._setMeshShadows(true)
+        this._meshShadowsInitialized = true
+      }
     } else {
       mainLight.castShadow = false
     }
     mainLight.shadow.camera.updateProjectionMatrix()
-
-    // 自动适配阴影相机范围到当前场景尺度
-    this._autoFitShadowCamera()
-
-    // 调试：统计 castShadow mesh 数量
-    let castCount = 0, receiveCount = 0
-    this.scene.traverse(o => {
-      if (o.isMesh && !o.userData.isControlHandle) {
-        if (o.castShadow) castCount++
-        if (o.receiveShadow) receiveCount++
-      }
-    })
-    console.log('[Shadow] mesh castShadow:', castCount, 'receiveShadow:', receiveCount,
-      'shadow.camera range:', mainLight.shadow.camera.left?.toFixed(1), '~', mainLight.shadow.camera.right?.toFixed(1))
   }
 
   // ========== 阴影管理 ==========
 
-  /**
-   * 对单个模型根节点启用阴影（对齐参考项目 enableShadows）。
-   * 在每个模型加载完成后调用。
-   */
-  enableShadows(root) {
-    if (!root) return
-    root.traverse((o) => {
-      if (o.isMesh) {
-        o.castShadow = true
-        o.receiveShadow = true
-      }
-    })
-  }
 
   /** 遍历场景所有 mesh 设置 castShadow / receiveShadow（排除控制手柄） */
   _setMeshShadows(enabled) {

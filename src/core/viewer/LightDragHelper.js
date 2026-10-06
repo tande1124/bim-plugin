@@ -56,8 +56,10 @@ export default class LightDragHelper {
     this.targetMarker.receiveShadow = false
     this.group.add(this.targetMarker)
 
-    // 连线
-    const lineGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()])
+    // 连线（预分配几何体，拖拽时只更新顶点位置避免每帧 GC）
+    this._linePositions = new Float32Array(6)
+    const lineGeom = new THREE.BufferGeometry()
+    lineGeom.setAttribute('position', new THREE.BufferAttribute(this._linePositions, 3))
     this.line = new THREE.Line(lineGeom, new THREE.LineBasicMaterial({
       color: 0xffaa44, transparent: true, opacity: 0.8, depthTest: false,
     }))
@@ -163,9 +165,15 @@ export default class LightDragHelper {
   }
 
   _updateVisuals(lightPos, targetPos) {
-    // 连线
-    this.line.geometry.dispose()
-    this.line.geometry = new THREE.BufferGeometry().setFromPoints([lightPos.clone(), targetPos.clone()])
+    // 连线（复用预分配的 Float32Array，避免每帧 dispose + new）
+    this._linePositions[0] = lightPos.x
+    this._linePositions[1] = lightPos.y
+    this._linePositions[2] = lightPos.z
+    this._linePositions[3] = targetPos.x
+    this._linePositions[4] = targetPos.y
+    this._linePositions[5] = targetPos.z
+    this.line.geometry.attributes.position.needsUpdate = true
+    this.line.geometry.computeBoundingSphere()
 
     // 尺寸自适应：距离越远标记越大
     const len = Math.max(lightPos.distanceTo(targetPos), 1)

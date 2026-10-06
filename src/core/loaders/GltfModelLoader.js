@@ -516,22 +516,27 @@ export class GltfModelLoader {
     const maxAnisotropy =
       this.deps.renderer?.capabilities.getMaxAnisotropy?.() ?? 16
 
-    scene.traverse((obj) => {
-      const mesh = obj
-      if (!mesh.isMesh) return
+    // 标准 PBR 材质中可能包含纹理的属性列表
+    const TEXTURE_KEYS = [
+      'map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap',
+      'emissiveMap', 'bumpMap', 'displacementMap', 'alphaMap',
+      'envMap', 'lightMap', 'specularMap',
+    ]
 
-      const material = mesh.material
+    scene.traverse((obj) => {
+      if (!obj.isMesh) return
+
+      const material = obj.material
       if (!material) return
 
       const materials = Array.isArray(material) ? material : [material]
       for (const mat of materials) {
         if (!mat) continue
 
-        for (const key of Object.keys(mat)) {
-          const value = mat[key]
-          if (!value || !value.isTexture) continue
+        for (const key of TEXTURE_KEYS) {
+          const texture = mat[key]
+          if (!texture || !texture.isTexture) continue
 
-          const texture = value
           texture.anisotropy = maxAnisotropy
 
           const mipCount = Array.isArray(texture.mipmaps) ? texture.mipmaps.length : 0

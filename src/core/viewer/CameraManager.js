@@ -185,6 +185,25 @@ export class CameraManager {
   // ========== 飞行 ==========
 
   /**
+   * 平滑飞行到指定位置和目标点（带动画）。
+   *
+   * @param {THREE.Vector3} position - 目标相机位置
+   * @param {THREE.Vector3} target - 目标观察点
+   * @param {number} [duration=1500] - 飞行动画时长（ms）
+   */
+  flyToPosition(position, target, duration = 1500) {
+    this.hasSettledView = true
+    const anim = this.flyAnimation
+    anim.active = true
+    anim.startTime = performance.now()
+    anim.duration = duration
+    anim.fromPosition.copy(this.camera.position)
+    anim.toPosition.copy(position)
+    anim.fromTarget.copy(this.controls.target)
+    anim.toTarget.copy(target)
+  }
+
+  /**
    * 平滑飞行到目标点，保持当前观察角度。
    *
    * @param {THREE.Vector3} target - 目标世界坐标

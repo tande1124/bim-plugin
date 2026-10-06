@@ -161,9 +161,10 @@ const bimControls = {
    */
   getCameraInfo() {
     const c = getViewer()
-    if (!c) return null
+    if (!c?.cameraManager?.camera) return null
     const pos = c.cameraManager.camera.position
-    const tgt = c.cameraManager.controls.target
+    const tgt = c.cameraManager.controls?.target
+    if (!tgt) return null
     return {
       position: { x: pos.x, y: pos.y, z: pos.z },
       target: { x: tgt.x, y: tgt.y, z: tgt.z },

@@ -151,6 +151,9 @@ function createSolidMaterial(cfg) {
   })
 }
 
+/** 共享 TextureLoader 实例（避免每次创建材质重复实例化） */
+const _textureLoader = new THREE.TextureLoader()
+
 function createTexMaterial(cfg, renderer) {
   const mat = new THREE.MeshStandardMaterial({
     name: cfg.name,
@@ -160,7 +163,7 @@ function createTexMaterial(cfg, renderer) {
     transparent: cfg.transparent === true,
   })
   if (cfg.textureDataURL) {
-    const tex = new THREE.TextureLoader().load(cfg.textureDataURL)
+    const tex = _textureLoader.load(cfg.textureDataURL)
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping
     tex.repeat.set(cfg.tileX || 1, cfg.tileY || 1)
     tex.colorSpace = THREE.SRGBColorSpace

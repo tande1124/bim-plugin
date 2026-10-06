@@ -58,13 +58,4 @@ export default {
   text-overflow: ellipsis;
 }
 
-.part-label-path {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
-  line-height: 1.3;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 </style>

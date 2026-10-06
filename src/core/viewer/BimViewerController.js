@@ -547,15 +547,7 @@ export class BimViewerController {
           )
         : controls.target.clone()
 
-      this.cameraManager.hasSettledView = true
-      const anim = this.cameraManager.flyAnimation
-      anim.active = true
-      anim.startTime = performance.now()
-      anim.duration = duration
-      anim.fromPosition.copy(cam.position)
-      anim.toPosition.copy(toPosition)
-      anim.fromTarget.copy(controls.target)
-      anim.toTarget.copy(toTarget)
+      this.cameraManager.flyToPosition(toPosition, toTarget, duration)
       return
     }
     // 无配置：平滑飞行到场景包围盒中心

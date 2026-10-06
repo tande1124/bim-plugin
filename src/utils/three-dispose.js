@@ -7,39 +7,31 @@ import * as THREE from 'three'
  * @param {THREE.Object3D} root - 需要递归释放的根节点
  */
 export function disposeObject3D(root) {
-  root.traverse((object) => {
-    const mesh = object
-    const geometry = mesh.geometry
+  const disposedTextures = new Set()
+  const disposedMaterials = new Set()
+  const disposedGeometries = new Set()
 
-    // 释放几何体占用的 GPU 缓冲区
-    if (geometry) {
+  root.traverse((object) => {
+    const geometry = object.geometry
+    if (geometry && !disposedGeometries.has(geometry)) {
+      disposedGeometries.add(geometry)
       geometry.dispose()
     }
 
-    const material = mesh.material
+    const material = object.material
+    const materials = Array.isArray(material) ? material : material ? [material] : []
+    for (const mat of materials) {
+      if (!mat || disposedMaterials.has(mat)) continue
+      disposedMaterials.add(mat)
 
-    // 释放单个或数组形式的材质
-    if (Array.isArray(material)) {
-      material.forEach(disposeMaterial)
-    } else if (material) {
-      disposeMaterial(material)
+      // 释放材质中引用的纹理（去重避免共享纹理被多次 dispose）
+      for (const value of Object.values(mat)) {
+        if (value && typeof value === 'object' && 'isTexture' in value && !disposedTextures.has(value)) {
+          disposedTextures.add(value)
+          value.dispose()
+        }
+      }
+      mat.dispose()
     }
   })
-}
-
-/**
- * 释放单个材质及其内部引用的所有纹理
- *
- * @param {THREE.Material} material - 需要释放的材质
- */
-function disposeMaterial(material) {
-  // 遍历材质的所有属性，释放其中的纹理对象
-  Object.values(material).forEach((value) => {
-    if (value && typeof value === 'object' && 'isTexture' in value) {
-      value.dispose()
-    }
-  })
-
-  // 最后释放材质本身
-  material.dispose()
 }

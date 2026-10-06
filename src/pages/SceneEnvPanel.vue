@@ -104,6 +104,19 @@ export default {
       const src = bimControls.getEnvConfig() ?? window.BizConfig?.sceneConfig?.envConfig
       if (src) {
         this.cfg = JSON.parse(JSON.stringify(src))
+        // 防御：配置缺少 shadow 块时补全默认值，避免模板访问 undefined 属性崩溃
+        if (!this.cfg.dirLight) {
+          this.cfg.dirLight = { intensity: 1, yaw: 45, pitch: 50, color: '#ffffff' }
+        }
+        if (!this.cfg.dirLight.shadow) {
+          this.cfg.dirLight.shadow = { enabled: true, resolution: 4096, range: 62, offsetX: 0, offsetY: 0, bias: -0.001 }
+        }
+        if (this.cfg.envMapEnabled === undefined) {
+          this.cfg.envMapEnabled = true
+        }
+        if (!this.cfg.envLight) {
+          this.cfg.envLight = { intensity: 1, bgIntensity: 1.5, exposure: 1 }
+        }
       }
     },
 
